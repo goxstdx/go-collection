@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+
+	"github.com/ZHOUXING1997/collection/errorx"
 )
 
 // Copy 复制一个新的 Collection
 func (c *Collection[K, V]) Copy() *Collection[K, V] {
-	return c.cloneWithSortedKeys(Clone(c.value))
+	return &Collection[K, V]{value: Clone(c.value)}
 }
 
 // IsEmpty 判断是否为空
@@ -61,89 +63,41 @@ func (c *Collection[K, V]) Has(key K) bool {
 
 // Set 设置 key->val（直接修改当前 Collection，返回自身以支持链式调用）
 func (c *Collection[K, V]) Set(key K, val V) *Collection[K, V] {
-	_, exists := c.value[key]
 	c.value[key] = val
-
-	// 如果是新增的 key，插入到 sortedKeys
-	if !exists {
-		c.insertKeyInOrder(key)
-	}
-
 	return c
 }
 
 // Put 设置 key->val（不修改原 Collection，返回新的 Collection）
 func (c *Collection[K, V]) Put(key K, val V) *Collection[K, V] {
-	// 检查是否是新增的 key
-	_, exists := c.value[key]
-
-	newMap := Set(c.value, key, val)
-	newColl := c.cloneWithSortedKeys(newMap)
-
-	// 如果是新增的 key，插入到 sortedKeys
-	if !exists {
-		newColl.insertKeyInOrder(key)
-	}
-
-	return newColl
+	return &Collection[K, V]{value: Set(c.value, key, val)}
 }
 
 // Delete 删除指定的 key（不修改原 Collection，返回新的 Collection）
 func (c *Collection[K, V]) Delete(key K) *Collection[K, V] {
-	newMap := Delete(c.value, key)
-	newColl := c.cloneWithSortedKeys(newMap)
-
-	// 从新 Collection 的 sortedKeys 中移除
-	newColl.removeKeyFromSorted(key)
-
-	return newColl
+	return &Collection[K, V]{value: Delete(c.value, key)}
 }
 
 // DeleteByFunc 删除满足条件的 key（不修改原 Collection，返回新的 Collection）
 func (c *Collection[K, V]) DeleteByFunc(fn func(K, V) bool) *Collection[K, V] {
 	newMap := Clone(c.value)
-	deletedKeys := make([]K, 0)
 	for k, v := range newMap {
 		if fn(k, v) {
 			delete(newMap, k)
-			deletedKeys = append(deletedKeys, k)
 		}
 	}
-
-	newColl := c.cloneWithSortedKeys(newMap)
-
-	// 从新 Collection 的 sortedKeys 中移除被删除的keys
-	newColl.removeKeyFromSorted(deletedKeys...)
-
-	return newColl
+	return &Collection[K, V]{value: newMap}
 }
 
 // Remove 删除指定的 key（直接修改当前 Collection，返回自身以支持链式调用）
 func (c *Collection[K, V]) Remove(key K) *Collection[K, V] {
 	delete(c.value, key)
-	c.removeKeyFromSorted(key)
-
 	return c
 }
 
 // Merge 合并另一个 map 到当前 Collection（不修改原 Collection，返回新的 Collection）
 // 键冲突时，以 other 为准
 func (c *Collection[K, V]) Merge(other map[K]V) *Collection[K, V] {
-	newMap := Merge(c.value, other)
-	newColl := c.cloneWithSortedKeys(newMap)
-
-	// 归并排序更新 sortedKeys
-	if newColl.sortedKeys != nil {
-		otherKeys := Keys(other)
-		if newColl.keyCompareFunc != nil {
-			slices.SortFunc(otherKeys, func(a, b K) int {
-				return newColl.keyCompareFunc(a, b)
-			})
-		}
-		newColl.sortedKeys = newColl.mergeKeys(otherKeys)
-	}
-
-	return newColl
+	return &Collection[K, V]{value: Merge(c.value, other)}
 }
 
 // MergeCollection 合并另一个 Collection 到当前 Collection（不修改原 Collection，返回新的 Collection）
@@ -151,104 +105,86 @@ func (c *Collection[K, V]) MergeCollection(other *Collection[K, V]) *Collection[
 	if other == nil {
 		return c.Copy()
 	}
-
-	newMap := Merge(c.value, other.value)
-	newColl := c.cloneWithSortedKeys(newMap)
-
-	// 归并排序更新 sortedKeys（直接使用 other 的 sortedKeys）
-	if newColl.sortedKeys != nil && other.sortedKeys != nil {
-		newColl.sortedKeys = newColl.mergeKeys(other.sortedKeys)
-	}
-
-	return newColl
+	return &Collection[K, V]{value: Merge(c.value, other.value)}
 }
 
 // MergeInPlace 将另一个 map 合并到当前 Collection（直接修改当前 Collection，返回自身以支持链式调用）
 func (c *Collection[K, V]) MergeInPlace(other map[K]V) *Collection[K, V] {
-	// 记录新增的 keys
-	newKeys := make([]K, 0)
-	for k := range other {
-		if _, exists := c.value[k]; !exists {
-			newKeys = append(newKeys, k)
-		}
-	}
-
 	MergeInPlace(c.value, other)
-
-	// 增量更新 sortedKeys
-	if c.sortedKeys != nil {
-		if c.keyCompareFunc != nil {
-			slices.SortFunc(newKeys, func(a, b K) int {
-				return c.keyCompareFunc(a, b)
-			})
-		}
-		c.sortedKeys = c.mergeKeys(newKeys)
-	}
-
 	return c
 }
 
 // Only 仅保留指定的 keys（不修改原 Collection，返回新的 Collection）
 func (c *Collection[K, V]) Only(keys []K) *Collection[K, V] {
-	newMap := Only(c.value, keys)
-	newColl := c.cloneWithSortedKeys(newMap)
-
-	// 从 sortedKeys 中过滤，保持顺序
-	newColl.sortedKeys = c.filterSortedKeys(newMap)
-
-	return newColl
+	return &Collection[K, V]{value: Only(c.value, keys)}
 }
 
 // Except 排除指定的 keys（不修改原 Collection，返回新的 Collection）
 func (c *Collection[K, V]) Except(keys []K) *Collection[K, V] {
-	newMap := Except(c.value, keys)
-	newColl := c.cloneWithSortedKeys(newMap)
-
-	// 从 sortedKeys 中过滤，保持顺序
-	newColl.sortedKeys = c.filterSortedKeys(newMap)
-
-	return newColl
+	return &Collection[K, V]{value: Except(c.value, keys)}
 }
 
 // Filter 过滤键值对，返回新的 Collection
 // fn 函数返回 true 的键值对会被保留
 func (c *Collection[K, V]) Filter(fn func(value V, key K) bool) *Collection[K, V] {
-	newMap := Filter(c.value, fn)
-	newColl := c.cloneWithSortedKeys(newMap)
-
-	// 从 sortedKeys 中过滤，保持顺序
-	newColl.sortedKeys = c.filterSortedKeys(newMap)
-
-	return newColl
+	return &Collection[K, V]{value: Filter(c.value, fn)}
 }
 
-// Each 对每个键值对执行回调函数
-func (c *Collection[K, V]) Each(fn func(value V, key K)) *Collection[K, V] {
+// Each 按 map 自身顺序遍历，顺序不确定。fn 返回 false 时终止遍历。
+func (c *Collection[K, V]) Each(fn func(value V, key K) bool) *Collection[K, V] {
 	Each(c.value, fn)
 
 	return c
 }
 
-// Foreach 对每个键值对执行回调函数（有序的）
+// Foreach 按 map 自身顺序完整遍历，顺序不确定。要按比较函数的顺序遍历，用 EachSorted。
 func (c *Collection[K, V]) Foreach(fn func(value V, key K)) *Collection[K, V] {
-	if c.sortedKeys == nil {
-		c.initSortedKeys()
-	}
-	for _, k := range c.sortedKeys {
-		fn(c.value[k], k)
-	}
+	Foreach(c.value, fn)
 
 	return c
 }
 
-// Map 对 value 做映射。R 由 fn 的返回值决定，可以与 V 不同。
-// key 的比较函数和已排序的 key 会保留；value 的比较函数不会带过去。
-func (c *Collection[K, V]) Map[R any](fn func(value V, key K) R) *Collection[K, R] {
-	return &Collection[K, R]{
-		value:          MapValues(c.value, fn),
-		keyCompareFunc: c.keyCompareFunc,
-		sortedKeys:     slices.Clone(c.sortedKeys),
+// EachSorted 按 cmp 排序后遍历。每次调用都重新排序，不保存顺序。
+// 这一次是排序，复杂度随元素个数按 n log n 增长。再调一次会再排一次。
+// key 的原始顺序来自 map 遍历，比较结果相等时先后不固定。比较函数里再用 key 做最后的比较，顺序就固定。
+// 排序用的是调用开始时的键值快照。回调里删掉的 key 会跳过；新增的 key 不会进入这次遍历。
+// 回调读到的是当时 map 里的 value。cmp 或 fn 为 nil 时返回 NilFunc。
+// 含 NaN 的 key 无法查回，使用调用开始时的 value 快照。
+func (c *Collection[K, V]) EachSorted(cmp func(a K, va V, b K, vb V) int, fn func(value V, key K)) error {
+	if cmp == nil || fn == nil {
+		return errorx.NilFunc
 	}
+
+	type item struct {
+		key   K
+		value V
+	}
+	items := make([]item, 0, len(c.value))
+	for k, v := range c.value {
+		items = append(items, item{key: k, value: v})
+	}
+	slices.SortFunc(items, func(a, b item) int {
+		return cmp(a.key, a.value, b.key, b.value)
+	})
+	for _, it := range items {
+		// 含 NaN 的 key 不等于自身，无法查回或按 key 删除，只能使用遍历时的快照。
+		if it.key != it.key {
+			fn(it.value, it.key)
+			continue
+		}
+		// 回调可能已经删掉这个 key。map 查不到时得到的是零值，不能当成还在。
+		v, ok := c.value[it.key]
+		if !ok {
+			continue
+		}
+		fn(v, it.key)
+	}
+	return nil
+}
+
+// Map 对 value 做映射。R 由 fn 的返回值决定，可以与 V 不同。
+func (c *Collection[K, V]) Map[R any](fn func(value V, key K) R) *Collection[K, R] {
+	return &Collection[K, R]{value: MapValues(c.value, fn)}
 }
 
 // Reduce 将 map 折叠为一个结果。
@@ -256,65 +192,48 @@ func (c *Collection[K, V]) Reduce[R any](init R, fn func(acc R, value V, key K) 
 	return Reduce(c.value, init, fn)
 }
 
-// First 返回排序后的第一个键值对及是否存在（稳定，基于 sortedKeys）
-func (c *Collection[K, V]) First() (K, V, bool) {
-	if c.sortedKeys == nil {
-		c.initSortedKeys()
-	}
-	if len(c.sortedKeys) == 0 {
-		var zk K
-		var zv V
-		return zk, zv, false
-	}
-	firstKey := c.sortedKeys[0]
-	return firstKey, c.value[firstKey], true
+// MinBy 返回按 cmp 最小的键值对。每次调用都重新扫描全部元素，复杂度随元素个数线性增长，不保存结果。
+// 再调一次会再扫描一遍。cmp 返回负数表示左边小于右边。
+// 比较结果相等时保留哪一个不固定。比较函数里再用 key 做最后的比较，结果就固定。
+// 空集合返回 EmptyError。cmp 为 nil 时返回 NilFunc。伴随返回的零值不是结果。
+func (c *Collection[K, V]) MinBy(cmp func(a K, va V, b K, vb V) int) (K, V, error) {
+	return c.pick(cmp, true)
 }
 
-// FirstWhere 返回第一个满足条件的键值对及是否存在（稳定，按 sortedKeys 顺序查找）
-func (c *Collection[K, V]) FirstWhere(fn func(value V, key K) bool) (K, V, bool) {
-	if c.sortedKeys == nil {
-		c.initSortedKeys()
-	}
-	for _, k := range c.sortedKeys {
-		v := c.value[k]
-		if fn(v, k) {
-			return k, v, true
-		}
-	}
+// MaxBy 返回按 cmp 最大的键值对。每次调用都重新扫描全部元素，复杂度随元素个数线性增长，不保存结果。
+// 再调一次会再扫描一遍。cmp 返回正数表示左边大于右边。
+// 比较结果相等时保留哪一个不固定。比较函数里再用 key 做最后的比较，结果就固定。
+// 空集合返回 EmptyError。cmp 为 nil 时返回 NilFunc。伴随返回的零值不是结果。
+func (c *Collection[K, V]) MaxBy(cmp func(a K, va V, b K, vb V) int) (K, V, error) {
+	return c.pick(cmp, false)
+}
+
+// pick 扫一遍 map。wantMin 为真时取最小，否则取最大。
+func (c *Collection[K, V]) pick(cmp func(a K, va V, b K, vb V) int, wantMin bool) (K, V, error) {
 	var zk K
 	var zv V
-	return zk, zv, false
-}
+	if cmp == nil {
+		return zk, zv, errorx.NilFunc
+	}
+	if len(c.value) == 0 {
+		return zk, zv, errorx.EmptyError
+	}
 
-// Last 返回排序后的最后一个键值对及是否存在（稳定，基于 sortedKeys）
-func (c *Collection[K, V]) Last() (K, V, bool) {
-	if c.sortedKeys == nil {
-		c.initSortedKeys()
-	}
-	if len(c.sortedKeys) == 0 {
-		var zk K
-		var zv V
-		return zk, zv, false
-	}
-	lastKey := c.sortedKeys[len(c.sortedKeys)-1]
-	return lastKey, c.value[lastKey], true
-}
-
-// LastWhere 返回最后一个满足条件的键值对及是否存在（稳定，按 sortedKeys 逆序查找）
-func (c *Collection[K, V]) LastWhere(fn func(value V, key K) bool) (K, V, bool) {
-	if c.sortedKeys == nil {
-		c.initSortedKeys()
-	}
-	for i := len(c.sortedKeys) - 1; i >= 0; i-- {
-		k := c.sortedKeys[i]
-		v := c.value[k]
-		if fn(v, k) {
-			return k, v, true
+	var bestK K
+	var bestV V
+	first := true
+	for k, v := range c.value {
+		if first {
+			bestK, bestV = k, v
+			first = false
+			continue
+		}
+		order := cmp(k, v, bestK, bestV)
+		if (wantMin && order < 0) || (!wantMin && order > 0) {
+			bestK, bestV = k, v
 		}
 	}
-	var zk K
-	var zv V
-	return zk, zv, false
+	return bestK, bestV, nil
 }
 
 // All 返回底层 map。这是引用，修改会影响 Collection。
@@ -339,22 +258,11 @@ func (c *Collection[K, V]) DD() *Collection[K, V] {
 	return c
 }
 
-// PluckField 用 fn 从每个 value 取出一个值。
-// 已有 sortedKeys 时按该顺序返回，否则按 map 的遍历顺序。
+// PluckField 用 fn 从每个 value 取出一个值。结果顺序不确定。
 func (c *Collection[K, V]) PluckField[R any](fn func(V) R) []R {
 	result := make([]R, 0, len(c.value))
-	if c.sortedKeys != nil {
-		for _, k := range c.sortedKeys {
-			if v, ok := c.value[k]; ok {
-				result = append(result, fn(v))
-			}
-		}
-		return result
-	}
-
 	for _, v := range c.value {
 		result = append(result, fn(v))
 	}
-
 	return result
 }

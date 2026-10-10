@@ -1,10 +1,12 @@
 package map_collection
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
 
+	"github.com/ZHOUXING1997/collection/errorx"
 	"github.com/ZHOUXING1997/collection/map_collection"
 )
 
@@ -302,40 +304,29 @@ func TestSafeCollectionConcurrentCopy(t *testing.T) {
 	}
 }
 
-func TestSafeCollectionConcurrentOrderKey(t *testing.T) {
+func TestSafeCollectionConcurrentMinBy(t *testing.T) {
 	sc := map_collection.NewSafeCollection(map[string]int{
 		"c": 3, "a": 1, "b": 2,
 	})
 
-	sc.SetKeyCompare(func(a, b string) int {
+	var wg sync.WaitGroup
+	errors := make(chan error, 20)
+	cmpKey := func(a string, _ int, b string, _ int) int {
 		if a < b {
 			return -1
 		} else if a > b {
 			return 1
 		}
 		return 0
-	})
+	}
 
-	var wg sync.WaitGroup
-	errors := make(chan error, 20)
-
-	// 并发OrderKey和读取
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := sc.OrderKey()
-			if err != nil {
-				errors <- err
-			}
-		}()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			k, _, ok := sc.First()
-			if ok && k != "a" && k != "b" && k != "c" {
-				errors <- fmt.Errorf("First returned unexpected key: %s", k)
+			k, v, err := sc.MinBy(cmpKey)
+			if err != nil || k != "a" || v != 1 {
+				errors <- fmt.Errorf("MinBy = %s %d err=%v", k, v, err)
 			}
 		}()
 	}
@@ -467,41 +458,48 @@ func TestSafeCollectionConcurrentDeleteAndAddToEmpty(t *testing.T) {
 	}
 }
 
-// 测试空集合的并发First/Last
-func TestEmptySafeCollectionConcurrentFirstLast(t *testing.T) {
+// 测试空集合的并发 MinBy / MaxBy
+func TestEmptySafeCollectionConcurrentMinByMaxBy(t *testing.T) {
 	sc := map_collection.NewSafeCollection(map[string]int{})
 
 	var wg sync.WaitGroup
-	errors := make(chan error, 40)
+	errs := make(chan error, 40)
+	cmpKey := func(a string, _ int, b string, _ int) int {
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+		return 0
+	}
 
-	// 并发调用First
 	for i := 0; i < 20; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _, ok := sc.First()
-			if ok {
-				errors <- fmt.Errorf("First on empty collection should return false")
+			_, _, err := sc.MinBy(cmpKey)
+			if !errors.Is(err, errorx.EmptyError) {
+				errs <- fmt.Errorf("MinBy on empty collection err=%v", err)
 			}
 		}()
 	}
 
-	// 并发调用Last
 	for i := 0; i < 20; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _, ok := sc.Last()
-			if ok {
-				errors <- fmt.Errorf("Last on empty collection should return false")
+			_, _, err := sc.MaxBy(cmpKey)
+			if !errors.Is(err, errorx.EmptyError) {
+				errs <- fmt.Errorf("MaxBy on empty collection err=%v", err)
 			}
 		}()
 	}
 
 	wg.Wait()
-	close(errors)
+	close(errs)
 
-	for err := range errors {
+	for err := range errs {
 		t.Error(err)
 	}
 }
@@ -519,10 +517,11 @@ func TestEmptySafeCollectionConcurrentEach(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			sc.Each(func(v int, k string) {
+			sc.Each(func(v int, k string) bool {
 				mu.Lock()
 				iterCount++
 				mu.Unlock()
+				return true
 			})
 		}()
 	}

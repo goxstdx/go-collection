@@ -5,7 +5,7 @@
 - 切片集合：`collection.NewSliceCollect`，实现在 `slice_collection`
 - Map 集合：`collection.NewMapCollect`，实现在 `map_collection`
 
-取值、排序键和数值聚合都由调用方传入函数完成，库本身不按字段名反射。
+取值和数值聚合都由调用方传入函数完成，库本身不按字段名反射。
 
 ## 切片集合
 
@@ -97,15 +97,37 @@ median := users.Median(func(u User) int { return u.Age })
 mc := collection.NewMapCollect(map[string]int{"b": 2, "a": 1})
 ```
 
-Map 的 key、value 比较仍由调用方设置，创建时不会自动生成：
+Map 不保存 key 顺序。`MinBy`、`MaxBy` 每次调用都重新扫描全部元素，复杂度随元素个数线性增长，不是排序。结果不保存，再调一次会再扫描一遍。比较函数同时收到 key 和 value，按 key 或按 value 都用它。比较结果相等时保留哪一个不固定；比较函数里再用 key 做最后比较，结果就固定。空集合返回 `errorx.EmptyError`。比较函数为 `nil` 时返回 `errorx.NilFunc`。伴随返回的零值不是结果。
+
+带条件时先 `Filter`，再 `MinBy` 或 `MaxBy`。`Filter` 会多分配一个 map。
+
+`Each`、`Foreach` 都不排序，顺序和直接遍历 map 一样，不确定。`Each` 的回调返回 `bool`，返回 `false` 时提前终止；`Foreach` 总是完整遍历。`EachSorted` 每次调用都按比较函数排序后再遍历，复杂度随元素个数按 n log n 增长。顺序不保存，再调一次会再排一次。比较结果相等时先后不固定，因为 key 的原始顺序来自 map 遍历。比较函数或遍历函数为 `nil` 时返回 `errorx.NilFunc`。空集合调用成功，遍历函数不会被调用。排序用的是调用开始时的键值快照：回调里删掉的 key 会跳过，新增的 key 不会进入这次遍历，回调读到的是当时 map 里的 value。含 NaN 的 key 无法查回，使用快照里的 value。`PluckField` 也不排序。
+
+自己排 key 时，先取出 map 再交给标准库。`All` 返回内部 map 的引用，遍历期间不要修改它。
 
 ```go
-mc.OrderKeyByFunc(cmp.Compare)
-mc.SetValCompare(cmp.Compare)
-mc.OrderValue()
+k, v, err := mc.MinBy(func(a string, va int, b string, vb int) int {
+    return cmp.Compare(a, b)
+})
+k, v, err = mc.MaxBy(func(a string, va int, b string, vb int) int {
+    return cmp.Compare(va, vb)
+})
+err = mc.EachSorted(func(a string, va int, b string, vb int) int {
+    return cmp.Compare(a, b)
+}, func(v int, k string) {
+    _ = v
+    _ = k
+})
+m := mc.All()
+for _, k := range slices.SortedFunc(maps.Keys(m), func(a, b string) int {
+    return cmp.Compare(a, b)
+}) {
+    v := m[k]
+    _ = v
+}
 ```
 
-`PluckField` 用函数从 value 取值。集合已有排序键时按该顺序返回，否则按 map 的遍历顺序。包级函数 `map_collection.Pluck` 同样接收取值函数，顺序不稳定。
+`PluckField` 用函数从 value 取值，结果顺序不确定。包级函数 `map_collection.Pluck` 同样接收取值函数，顺序也不稳定。
 
 ```go
 values := mc.PluckField(func(n int) int { return n })
@@ -113,17 +135,15 @@ labels := mc.Map(func(v int, k string) string { return k })
 sum := mc.Reduce(0, func(acc int, v int, k string) int { return acc + v })
 ```
 
-`Map` 保留 key 的比较函数和已排序的 key，不保留 value 的比较函数。`Reduce` 的累加类型由初始值和函数决定。`SafeCollection.Reduce` 同样是泛型方法。
+`Map` 的结果类型由函数返回值决定。`Reduce` 的累加类型由初始值和函数决定。`SafeCollection.Reduce` 同样是泛型方法。
 
-`All` 返回底层 map 的引用，修改会影响集合。`SafeCollection.All` 返回副本，修改返回值不会影响集合。
+`All` 返回底层 map 的引用，修改会影响集合。`SafeCollection.All` 返回副本，修改返回值不会影响集合。回调里不要再调用同一个 `SafeCollection`：写方法会等待这把锁，读方法在已有写操作等待时也可能卡住。
 
 ## 错误
 
 | 错误 | 含义 |
 | --- | --- |
 | `errorx.NoComparableError` | 当前类型没有默认比较，需要改用 `By` 方法 |
-| `errorx.EmptyError` | `Min`、`Max`、`Mode` 作用在空集合上 |
+| `errorx.EmptyError` | 切片的 `Min`、`Max`、`Mode`，以及 map 的 `MinBy`、`MaxBy` 作用在空集合上 |
 | `errorx.NilFunc` | 必填函数参数为 `nil` |
 | `errorx.NotFoundError` | `Search` 没有找到元素，下标为 `-1` |
-| `errorx.NotHaveKeyCompareFunc` | Map 按 key 排序时还没有比较函数 |
-| `errorx.NotHaveValCompareFunc` | Map 按 value 排序时还没有比较函数 |

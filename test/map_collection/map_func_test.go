@@ -267,8 +267,9 @@ func TestFuncEach(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	sum := 0
 
-	map_collection.Each(m, func(v int, k string) {
+	map_collection.Each(m, func(v int, k string) bool {
 		sum += v
+		return true
 	})
 
 	if sum != 6 {

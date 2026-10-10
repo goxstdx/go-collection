@@ -7,7 +7,7 @@ package map_collection
 // - 这些函数均为纯函数（除 InPlace 结尾者外），不会修改传入的原始 map，
 //   会返回一个新的 map 或结果值。
 // - Go 的 map 无序，这里未提供与顺序相关的 API。
-// - 优先使用 Go 1.21+ 的标准库 maps 包（Keys/Values/Clone/Equal/Copy）。
+// - 优先使用 Go 1.27+ 的标准库 maps 包（Keys/Values/Clone/Equal/Copy）。
 
 import (
 	"maps"
@@ -87,11 +87,14 @@ func DeleteInPlace[M ~map[K]V, K comparable, V any](m M, key K) {
 
 // Merge 返回一个新 map，包含 m 与 other 的所有键值，若键冲突则以 other 为准。
 func Merge[M ~map[K]V, K comparable, V any](m M, other M) M {
+	// 两边都为 nil 时返回空 map 而非 nil，避免调用方后续写入 panic。
 	if m == nil && other == nil {
-		var zero M
-		return zero
+		return make(M)
 	}
 	nm := maps.Clone(m)
+	if nm == nil {
+		nm = make(M)
+	}
 	maps.Copy(nm, other)
 	return nm
 }
@@ -114,9 +117,9 @@ func Only[M ~map[K]V, K comparable, V any](m M, keys []K) M {
 
 // Except 排除 keys 中出现的键，返回新 map（不修改原 map）。
 func Except[M ~map[K]V, K comparable, V any](m M, keys []K) M {
+	// 输入为空时返回空 map 而非 nil，避免调用方在结果上写入 panic。
 	if len(m) == 0 {
-		var zero M
-		return zero
+		return make(M)
 	}
 	nm := maps.Clone(m)
 	for _, k := range keys {
@@ -154,8 +157,17 @@ func Filter[M ~map[K]V, K comparable, V any](m M, fn func(value V, key K) bool) 
 	return nm
 }
 
-// Each 对每个键值对执行一次回调。
-func Each[M ~map[K]V, K comparable, V any](m M, fn func(value V, key K)) {
+// Each 按 map 自身顺序遍历，fn 返回 false 时终止遍历。
+func Each[M ~map[K]V, K comparable, V any](m M, fn func(value V, key K) bool) {
+	for k, v := range m {
+		if !fn(v, k) {
+			return
+		}
+	}
+}
+
+// Foreach 对每个键值对执行一次回调，顺序不确定。
+func Foreach[M ~map[K]V, K comparable, V any](m M, fn func(value V, key K)) {
 	for k, v := range m {
 		fn(v, k)
 	}

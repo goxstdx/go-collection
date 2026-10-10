@@ -2,9 +2,11 @@ package map_collection
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/ZHOUXING1997/collection/errorx"
 	"github.com/ZHOUXING1997/collection/map_collection"
 )
 
@@ -356,8 +358,9 @@ func TestEach(t *testing.T) {
 	c := map_collection.NewCollection(m)
 
 	sum := 0
-	c.Each(func(v int, k string) {
+	c.Each(func(v int, k string) bool {
 		sum += v
+		return true
 	})
 
 	if sum != 6 {
@@ -365,17 +368,25 @@ func TestEach(t *testing.T) {
 	}
 }
 
-func TestForeach(t *testing.T) {
+func TestEachSorted(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	c := map_collection.NewCollection(m)
 
 	sum := 0
-	c.Foreach(func(v int, k string) {
+	err := c.EachSorted(func(a string, _ int, b string, _ int) int {
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+		return 0
+	}, func(v int, k string) {
 		sum += v
 	})
 
-	if sum != 6 {
-		t.Errorf("Foreach did not iterate correctly, expected sum 6, got %d", sum)
+	if err != nil || sum != 6 {
+		t.Errorf("EachSorted did not iterate correctly, expected sum 6, got %d, err %v", sum, err)
 	}
 }
 
@@ -413,79 +424,123 @@ func TestReduce(t *testing.T) {
 	}
 }
 
-func TestFirst(t *testing.T) {
+func TestMinBy(t *testing.T) {
 	m := map[string]int{"a": 1}
 	c := map_collection.NewCollection(m)
 
-	k, v, ok := c.First()
-	if !ok || k != "a" || v != 1 {
-		t.Error("First did not return correct value")
+	k, v, err := c.MinBy(func(a string, _ int, b string, _ int) int {
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+		return 0
+	})
+	if err != nil || k != "a" || v != 1 {
+		t.Error("MinBy did not return correct value")
 	}
 
-	// 空集合
 	emptyC := map_collection.NewCollection(map[string]int{})
-	_, _, ok = emptyC.First()
-	if ok {
-		t.Error("First should return false for empty collection")
+	_, _, err = emptyC.MinBy(func(a string, _ int, b string, _ int) int {
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+		return 0
+	})
+	if !errors.Is(err, errorx.EmptyError) {
+		t.Error("MinBy should return EmptyError for empty collection")
 	}
 }
 
-func TestFirstWhere(t *testing.T) {
+func TestFilterThenMinBy(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	c := map_collection.NewCollection(m)
+	cmpValue := func(_ string, va int, _ string, vb int) int {
+		if va < vb {
+			return -1
+		}
+		if va > vb {
+			return 1
+		}
+		return 0
+	}
 
-	_, v, ok := c.FirstWhere(func(v int, k string) bool {
+	_, v, err := c.Filter(func(v int, k string) bool {
 		return v > 1
-	})
-
-	if !ok || v <= 1 {
-		t.Error("FirstWhere did not find correct value")
+	}).MinBy(cmpValue)
+	if err != nil || v <= 1 {
+		t.Error("Filter then MinBy did not find correct value")
 	}
 
-	// 找不到匹配项
-	_, _, ok = c.FirstWhere(func(v int, k string) bool {
+	_, _, err = c.Filter(func(v int, k string) bool {
 		return v > 10
-	})
-	if ok {
-		t.Error("FirstWhere should return false when no match found")
+	}).MinBy(cmpValue)
+	if !errors.Is(err, errorx.EmptyError) {
+		t.Error("Filter then MinBy should return EmptyError when no match found")
 	}
 }
 
-func TestLast(t *testing.T) {
+func TestMaxBy(t *testing.T) {
 	m := map[string]int{"a": 1}
 	c := map_collection.NewCollection(m)
 
-	k, v, ok := c.Last()
-	if !ok || k != "a" || v != 1 {
-		t.Error("Last did not return correct value")
+	k, v, err := c.MaxBy(func(a string, _ int, b string, _ int) int {
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+		return 0
+	})
+	if err != nil || k != "a" || v != 1 {
+		t.Error("MaxBy did not return correct value")
 	}
 
-	// 空集合
 	emptyC := map_collection.NewCollection(map[string]int{})
-	_, _, ok = emptyC.Last()
-	if ok {
-		t.Error("Last should return false for empty collection")
+	_, _, err = emptyC.MaxBy(func(a string, _ int, b string, _ int) int {
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+		return 0
+	})
+	if !errors.Is(err, errorx.EmptyError) {
+		t.Error("MaxBy should return EmptyError for empty collection")
 	}
 }
 
-func TestLastWhere(t *testing.T) {
+func TestFilterThenMaxBy(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	c := map_collection.NewCollection(m)
-
-	_, v, ok := c.LastWhere(func(v int, k string) bool {
-		return v < 3
-	})
-
-	if !ok || v >= 3 {
-		t.Error("LastWhere did not find correct value")
+	cmpValue := func(_ string, va int, _ string, vb int) int {
+		if va < vb {
+			return -1
+		}
+		if va > vb {
+			return 1
+		}
+		return 0
 	}
 
-	// 找不到匹配项
-	_, _, ok = c.LastWhere(func(v int, k string) bool {
+	_, v, err := c.Filter(func(v int, k string) bool {
+		return v < 3
+	}).MaxBy(cmpValue)
+	if err != nil || v >= 3 {
+		t.Error("Filter then MaxBy did not find correct value")
+	}
+
+	_, _, err = c.Filter(func(v int, k string) bool {
 		return v > 10
-	})
-	if ok {
-		t.Error("LastWhere should return false when no match found")
+	}).MaxBy(cmpValue)
+	if !errors.Is(err, errorx.EmptyError) {
+		t.Error("Filter then MaxBy should return EmptyError when no match found")
 	}
 }
 
@@ -626,20 +681,23 @@ func TestEmptyCollectionIteration(t *testing.T) {
 
 	// 测试 Each - 不应该执行任何迭代
 	count := 0
-	c.Each(func(v int, k string) {
+	c.Each(func(v int, k string) bool {
 		count++
+		return true
 	})
 	if count != 0 {
 		t.Errorf("Each on empty collection should not iterate, but iterated %d times", count)
 	}
 
-	// 测试 Foreach
+	// 测试 EachSorted
 	count = 0
-	c.Foreach(func(v int, k string) {
+	err := c.EachSorted(func(a string, _ int, b string, _ int) int {
+		return 0
+	}, func(v int, k string) {
 		count++
 	})
-	if count != 0 {
-		t.Errorf("Foreach on empty collection should not iterate, but iterated %d times", count)
+	if err != nil || count != 0 {
+		t.Errorf("EachSorted on empty collection should not iterate, but iterated %d times, err %v", count, err)
 	}
 
 	// 测试 Map - 应返回空集合
@@ -688,20 +746,23 @@ func TestEmptyCollectionFiltering(t *testing.T) {
 func TestEmptyCollectionSearch(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{})
 
-	// FirstWhere 应返回 false
-	_, _, ok := c.FirstWhere(func(v int, k string) bool {
+	// 空集合上 Filter 后再取最小，应返回 EmptyError
+	_, _, err := c.Filter(func(v int, k string) bool {
 		return v > 0
+	}).MinBy(func(_ string, va int, _ string, vb int) int {
+		return va - vb
 	})
-	if ok {
-		t.Error("FirstWhere on empty collection should return false")
+	if !errors.Is(err, errorx.EmptyError) {
+		t.Error("MinBy on empty collection should return EmptyError")
 	}
 
-	// LastWhere 应返回 false
-	_, _, ok = c.LastWhere(func(v int, k string) bool {
+	_, _, err = c.Filter(func(v int, k string) bool {
 		return v > 0
+	}).MaxBy(func(_ string, va int, _ string, vb int) int {
+		return va - vb
 	})
-	if ok {
-		t.Error("LastWhere on empty collection should return false")
+	if !errors.Is(err, errorx.EmptyError) {
+		t.Error("MaxBy on empty collection should return EmptyError")
 	}
 }
 

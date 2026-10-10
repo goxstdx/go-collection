@@ -150,10 +150,12 @@ func (sc *SafeCollection[K, V]) MergeCollection(other *SafeCollection[K, V]) *Sa
 		return sc.Copy()
 	}
 
+	// 先取 other 的副本再锁自己，同一时刻只持有一把锁。
+	// 同时持有两把读锁时，a、b 互相合并或自己合并自己，遇到排队的写操作会死锁。
+	otherMap := other.All()
+
 	sc.mu.RLock()
-	other.mu.RLock()
-	newColl := sc.coll.MergeCollection(other.coll)
-	other.mu.RUnlock()
+	newColl := sc.coll.Merge(otherMap)
 	sc.mu.RUnlock()
 
 	return &SafeCollection[K, V]{
@@ -184,20 +186,29 @@ func (sc *SafeCollection[K, V]) Filter(fn func(V, K) bool) *SafeCollection[K, V]
 // Map 映射转换，返回新的线程安全 Collection。R 可以与 V 不同。
 func (sc *SafeCollection[K, V]) Map[R any](fn func(V, K) R) *SafeCollection[K, R] {
 	sc.mu.RLock()
+	// 回调 panic 时也必须释放读锁，避免 recover 后的写操作一直阻塞。
+	defer sc.mu.RUnlock()
 	newColl := sc.coll.Map(fn)
-	sc.mu.RUnlock()
 
 	return &SafeCollection[K, R]{
 		coll: newColl,
 	}
 }
 
-// Each 遍历每个元素
-func (sc *SafeCollection[K, V]) Each(fn func(V, K)) {
+// Each 按 map 自身顺序遍历，顺序不确定。fn 返回 false 时终止遍历。
+func (sc *SafeCollection[K, V]) Each(fn func(V, K) bool) {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 
 	sc.coll.Each(fn)
+}
+
+// Foreach 按 map 自身顺序完整遍历，顺序不确定。要按比较函数的顺序遍历，用 EachSorted。
+func (sc *SafeCollection[K, V]) Foreach(fn func(V, K)) {
+	sc.mu.RLock()
+	defer sc.mu.RUnlock()
+
+	sc.coll.Foreach(fn)
 }
 
 // Reduce 将 map 折叠为一个结果。R 由 init 和 fn 决定。
@@ -208,20 +219,28 @@ func (sc *SafeCollection[K, V]) Reduce[R any](init R, fn func(R, V, K) R) R {
 	return sc.coll.Reduce(init, fn)
 }
 
-// First 返回第一个元素（基于sortedKeys）
-func (sc *SafeCollection[K, V]) First() (K, V, bool) {
+// MinBy 返回按 cmp 最小的键值对。每次调用都重新扫描全部元素。
+func (sc *SafeCollection[K, V]) MinBy(cmp func(a K, va V, b K, vb V) int) (K, V, error) {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 
-	return sc.coll.First()
+	return sc.coll.MinBy(cmp)
 }
 
-// Last 返回最后一个元素（基于sortedKeys）
-func (sc *SafeCollection[K, V]) Last() (K, V, bool) {
+// MaxBy 返回按 cmp 最大的键值对。每次调用都重新扫描全部元素。
+func (sc *SafeCollection[K, V]) MaxBy(cmp func(a K, va V, b K, vb V) int) (K, V, error) {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 
-	return sc.coll.Last()
+	return sc.coll.MaxBy(cmp)
+}
+
+// EachSorted 按 cmp 排序后遍历。每次调用都重新排序，不保存顺序。
+func (sc *SafeCollection[K, V]) EachSorted(cmp func(a K, va V, b K, vb V) int, fn func(V, K)) error {
+	sc.mu.RLock()
+	defer sc.mu.RUnlock()
+
+	return sc.coll.EachSorted(cmp, fn)
 }
 
 // All 返回底层 map 的副本。修改返回值不会影响 Collection。
@@ -238,40 +257,4 @@ func (sc *SafeCollection[K, V]) ToJSON() (string, error) {
 	defer sc.mu.RUnlock()
 
 	return sc.coll.ToJSON()
-}
-
-// SetKeyCompare 设置 key 的比较函数
-func (sc *SafeCollection[K, V]) SetKeyCompare(fn func(K, K) int) *SafeCollection[K, V] {
-	sc.mu.Lock()
-	defer sc.mu.Unlock()
-
-	sc.coll.SetKeyCompare(fn)
-	return sc
-}
-
-// OrderKey 根据 keyCompareFunc 排序
-func (sc *SafeCollection[K, V]) OrderKey() (*SafeCollection[K, V], error) {
-	sc.mu.Lock()
-	defer sc.mu.Unlock()
-
-	_, err := sc.coll.OrderKey()
-	return sc, err
-}
-
-// SetValCompare 设置 value 的比较函数
-func (sc *SafeCollection[K, V]) SetValCompare(fn func(V, V) int) *SafeCollection[K, V] {
-	sc.mu.Lock()
-	defer sc.mu.Unlock()
-
-	sc.coll.SetValCompare(fn)
-	return sc
-}
-
-// OrderValue 按 value 排序
-func (sc *SafeCollection[K, V]) OrderValue() (*SafeCollection[K, V], error) {
-	sc.mu.Lock()
-	defer sc.mu.Unlock()
-
-	_, err := sc.coll.OrderValue()
-	return sc, err
 }

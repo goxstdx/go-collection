@@ -1,7 +1,6 @@
 package map_collection
 
 import (
-	"cmp"
 	"testing"
 
 	"github.com/ZHOUXING1997/collection/map_collection"
@@ -30,21 +29,16 @@ func TestReduceKeepsAccumulatorType(t *testing.T) {
 	}
 }
 
-// TestPluckFieldFollowsSortedKeys 验证已排序时 PluckField 按 sortedKeys 的顺序取值。
-func TestPluckFieldFollowsSortedKeys(t *testing.T) {
+// TestPluckFieldReturnsValues 验证 PluckField 取出全部 value，顺序不确定。
+func TestPluckFieldReturnsValues(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"b": 2, "a": 1, "c": 3})
-	if _, err := c.OrderKeyByFunc(cmp.Compare); err != nil {
-		t.Fatalf("OrderKeyByFunc() error: %v", err)
-	}
 
 	got := c.PluckField(func(v int) int { return v })
-	want := []int{1, 2, 3}
-	if len(got) != len(want) {
-		t.Fatalf("PluckField() = %v, want %v", got, want)
+	seen := map[int]int{}
+	for _, n := range got {
+		seen[n]++
 	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("PluckField() = %v, want %v", got, want)
-		}
+	if len(got) != 3 || seen[1] != 1 || seen[2] != 1 || seen[3] != 1 {
+		t.Fatalf("PluckField() = %v", got)
 	}
 }

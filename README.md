@@ -83,7 +83,12 @@ v0.1.0 删除了按字段名反射取值，也删除了预先保存的比较函�
 | `map.Pluck(field)` / `map.PluckFunc` | `PluckField(func(V) R)` |
 | `map_collection.Pluck(m, fieldName)` | `map_collection.Pluck(m, func(V) R)`。nil 指针由函数自己处理 |
 | `Map(func(V, K) V)` / `Reduce(any, func(...) any)` | 结果类型由函数返回值决定 |
-| `OrderByValueFunc(func(V) any, func(any, any) int)` | `OrderByValueFunc[R any](func(V) R, func(R, R) int)` |
+| `OrderByValueFunc(func(V) any, func(any, any) int)` | 删除。按 value 取最小或最大时，把比较写进 `MinBy` / `MaxBy` 的 `func(a K, va V, b K, vb V) int` |
+| `WithKeyCompare` / `SetKeyCompare` / `OrderKey` / `OrderKeyByFunc` | 删除。`MinBy`、`MaxBy` 每次调用都重新扫描全部元素，取最小或最大，不保存结果 |
+| `First` / `Last` / `FirstWhere` / `LastWhere` | `MinBy` / `MaxBy`，返回 `(K, V, error)`。带条件时先 `Filter`。空集合返回 `errorx.EmptyError` |
+| `Foreach(fn)`（原来有序） | `Foreach` 仍在，但不再有序，按 map 自身顺序完整遍历。需要有序时用 `EachSorted(cmp, fn) error` |
+| `Each(func(V, K))` | `Each(func(V, K) bool)`，回调返回 `false` 时提前终止 |
+| `WithValCompare` / `SetValCompare` / `OrderValue` | 删除。比较函数里比较 value |
 | `SafeCollection.Reduce(any, func(any, V, K) any)` | `Reduce[R any](init R, fn func(R, V, K) R)` |
 
 行为也有变化：
@@ -94,7 +99,10 @@ v0.1.0 删除了按字段名反射取值，也删除了预先保存的比较函�
 - `Slice`、`ForPage`、`Split` 改为返回元素副本，不再和原集合共用底层数组。
 - `NewSliceCollect` 仍不复制传入的切片，`Values` 仍返回内部切片，两者和调用方共用底层数组。
 - `SafeCollection.All` 返回 map 副本。普通 `Collection.All` 仍返回内部 map 的引用。
-- 已删除且没有替代的错误：`NoComputableError`、`ElementNoComputableError`、`KeyUnComparableError`、`InvalidTypeError`。
+- Map 的 `MinBy`、`MaxBy` 每次调用都重新扫描全部元素，是线性扫描，不是排序。结果不保存，连续调用会各扫描一遍。空集合返回 `errorx.EmptyError`。
+- Map 的 `EachSorted` 每次调用都重新排序，复杂度随元素个数按 n log n 增长，只返回 error。`Each`、`Foreach` 都按 map 自身顺序遍历，顺序不确定；`Each` 的回调返回 `false` 时提前终止，`Foreach` 总是完整遍历。
+- Map 的内部 map 不会为 nil。`NewMapCollect(nil)`、空集合的 `Except`、两个 nil map 的 `Merge` 都返回空 map，后续 `Set`、`MergeInPlace` 等写操作不会 panic。
+- 已删除且没有替代的错误：`NoComputableError`、`ElementNoComputableError`、`KeyUnComparableError`、`InvalidTypeError`、`NotHaveKeyCompareFunc`、`NotHaveValCompareFunc`。
 
 ## 版本历史
 
