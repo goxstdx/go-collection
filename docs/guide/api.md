@@ -73,7 +73,7 @@ users.SortByDesc(func(u User) int { return u.ID })
 users.SortBy(func(u User) int { return u.Age })
 ```
 
-上面这组数据的结果是 `id 3、2、4、1`：年龄 8 在前，同龄时保留刚才 id 倒序的相对顺序。字符串形式的数字先在函数里解析，再交给 `SortBy`。
+上面这组数据的结果是 `id 2、1`：年龄 8 在前。若有同龄用户，则保留刚才 id 倒序的相对顺序。字符串形式的数字先在函数里解析，再交给 `SortBy`。
 
 `SortByFunc` 的函数返回 `true` 表示第一个元素应排在前面。
 

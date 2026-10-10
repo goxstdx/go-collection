@@ -79,10 +79,11 @@ func (c *Collection[K, V]) Delete(key K) *Collection[K, V] {
 
 // DeleteByFunc 删除满足条件的 key（不修改原 Collection，返回新的 Collection）
 func (c *Collection[K, V]) DeleteByFunc(fn func(K, V) bool) *Collection[K, V] {
-	newMap := Clone(c.value)
-	for k, v := range newMap {
-		if fn(k, v) {
-			delete(newMap, k)
+	newMap := make(map[K]V, len(c.value))
+	// 仍遍历原始快照；重建保留项，避免 delete 无法删除含 NaN 的 key。
+	for k, v := range Clone(c.value) {
+		if !fn(k, v) {
+			newMap[k] = v
 		}
 	}
 	return &Collection[K, V]{value: newMap}

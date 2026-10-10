@@ -116,8 +116,9 @@ func (sc *SafeCollection[K, V]) Delete(key K) *SafeCollection[K, V] {
 // DeleteByFunc 删除满足条件的 key（返回新的线程安全 Collection）
 func (sc *SafeCollection[K, V]) DeleteByFunc(fn func(K, V) bool) *SafeCollection[K, V] {
 	sc.mu.RLock()
+	// 回调 panic 时也要释放读锁，避免 recover 后的写操作阻塞。
+	defer sc.mu.RUnlock()
 	newColl := sc.coll.DeleteByFunc(fn)
-	sc.mu.RUnlock()
 
 	return &SafeCollection[K, V]{
 		coll: newColl,
@@ -175,8 +176,9 @@ func (sc *SafeCollection[K, V]) MergeInPlace(other map[K]V) *SafeCollection[K, V
 // Filter 过滤元素（返回新的线程安全 Collection）
 func (sc *SafeCollection[K, V]) Filter(fn func(V, K) bool) *SafeCollection[K, V] {
 	sc.mu.RLock()
+	// 回调 panic 时也要释放读锁，避免 recover 后的写操作阻塞。
+	defer sc.mu.RUnlock()
 	newColl := sc.coll.Filter(fn)
-	sc.mu.RUnlock()
 
 	return &SafeCollection[K, V]{
 		coll: newColl,

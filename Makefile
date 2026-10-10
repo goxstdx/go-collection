@@ -15,7 +15,7 @@ add_tag:
 	if [ -z "$$TAG_MSG" ]; then \
 		TAG_MSG="$(TAG_NAME)"; \
 	fi; \
-	git tag $(TAG_NAME) -m "$$TAG_MSG"; \
+	git tag $(TAG_NAME) -m "$$TAG_MSG" && \
 	git push origin $(TAG_NAME)
 
 .PHONY: push_pkg

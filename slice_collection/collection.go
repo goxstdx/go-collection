@@ -1,4 +1,4 @@
-// Package slice_collcection 提供针对泛型切片的链式集合操作。
+// Package slice_collection 提供针对泛型切片的链式集合操作。
 //
 // 提供过滤、映射、排序、查找、聚合、分组、分页、序列化等常见操作，
 // 旨在在不追求极致性能的业务场景下提升开发效率。
@@ -8,6 +8,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"slices"
 	"sort"
@@ -328,14 +329,13 @@ func (c *Collection[T]) ForPage(page int, perPage int) (*Collection[T], error) {
 	if page <= 0 || perPage <= 0 {
 		return NewCollection[T](nil), fmt.Errorf("invalid page or perPage")
 	}
-	start := (page - 1) * perPage
-	end := start + perPage
-	if start >= len(c.value) {
+	// 先按集合长度判断页码，避免超大 page、perPage 的乘法溢出。
+	if len(c.value) == 0 || page-1 > (len(c.value)-1)/perPage {
 		return NewCollection[T](nil), nil
 	}
-	if end > len(c.value) {
-		end = len(c.value)
-	}
+	start := (page - 1) * perPage
+	// 先限制到剩余元素数，再相加，避免页尾下标溢出。
+	end := start + min(perPage, len(c.value)-start)
 
 	return NewCollection(cloneSlice(c.value[start:end])), nil
 }
@@ -345,9 +345,20 @@ func (c *Collection[T]) Nth(n int, offset int) (*Collection[T], error) {
 	if n <= 0 {
 		return NewCollection[T](nil), fmt.Errorf("invalid n")
 	}
-	res := make([]T, 0, len(c.value)/n+1)
-	for i := offset; i < len(c.value); i += n {
+	if offset < 0 {
+		return NewCollection[T](nil), fmt.Errorf("invalid offset")
+	}
+	if offset >= len(c.value) {
+		return NewCollection(make([]T, 0)), nil
+	}
+	res := make([]T, 0, (len(c.value)-1-offset)/n+1)
+	for i := offset; i < len(c.value); {
 		res = append(res, c.value[i])
+		// 下一步已越过集合时直接结束，避免 i+n 溢出成负下标。
+		if n >= len(c.value)-i {
+			break
+		}
+		i += n
 	}
 
 	return NewCollection[T](res), nil
@@ -423,10 +434,13 @@ func (c *Collection[T]) GroupBy[K comparable](f func(T, int) K) map[K]*Collectio
 	res := make(map[K]*Collection[T])
 	for i, v := range c.value {
 		key := f(v, i)
-		if _, ok := res[key]; !ok {
-			res[key] = NewCollection[T](nil)
+		group, ok := res[key]
+		if !ok {
+			group = NewCollection[T](nil)
+			res[key] = group
 		}
-		res[key].Push(v)
+		// 含 NaN 的 key 无法查回，用局部指针操作刚创建的分组。
+		group.Push(v)
 	}
 
 	return res
@@ -485,6 +499,10 @@ func (c *Collection[T]) SortBy[R cmp.Ordered](fn func(T) R) *Collection[T] {
 // SortByFunc 按自定义比较函数排序，直接修改当前集合。fn 返回 true 表示 v1 应排在 v2 前面。
 // 使用稳定排序，比较结果相等时保留原相对顺序。
 func (c *Collection[T]) SortByFunc(fn func(v1, v2 T) bool) (*Collection[T], error) {
+	if fn == nil {
+		return nil, errorx.NilFunc
+	}
+
 	sort.SliceStable(
 		c.value, func(i, j int) bool {
 			return fn(c.value[i], c.value[j])
@@ -786,7 +804,31 @@ func (c *Collection[T]) Avg[N number](fn func(T) N) float64 {
 		return 0
 	}
 
-	return c.Sum(fn) / float64(len(c.value))
+	var sum, mean float64
+	allFinite := true
+	for i, item := range c.value {
+		value := float64(fn(item))
+		sum += value
+		if math.IsInf(value, 0) || math.IsNaN(value) {
+			allFinite = false
+		}
+		if allFinite {
+			count := float64(i + 1)
+			delta := value - mean
+			// 异号大数相减也可能溢出，先分摊再更新平均值。
+			if math.IsInf(delta, 0) {
+				mean = mean - mean/count + value/count
+			} else {
+				mean += delta / count
+			}
+		}
+	}
+	// 仅对有限输入的求和溢出使用递推均值，保留原有精度和 Inf/NaN 语义。
+	// 同时计算可避免重复调用有副作用的 fn。
+	if allFinite && math.IsInf(sum, 0) {
+		return mean
+	}
+	return sum / float64(len(c.value))
 }
 
 // Median 对 fn 取出的数值求中位数。偶数个时取中间两个的平均值。空集合返回 0。
@@ -804,7 +846,13 @@ func (c *Collection[T]) Median[N number](fn func(T) N) float64 {
 
 	n := len(nums)
 	if n%2 == 0 {
-		return (nums[n/2-1] + nums[n/2]) / 2
+		a, b := nums[n/2-1], nums[n/2]
+		sum := a + b
+		// 有限大数相加溢出时先减半；其余情况保留原计算，避免小数减半下溢。
+		if math.IsInf(sum, 0) && !math.IsInf(a, 0) && !math.IsInf(b, 0) {
+			return a/2 + b/2
+		}
+		return sum / 2
 	}
 
 	return nums[n/2]

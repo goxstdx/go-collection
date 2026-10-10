@@ -64,6 +64,9 @@ func GetOr[M ~map[K]V, K comparable, V any](m M, key K, def V) V {
 // Set 返回设置了 key->val 后的新 map（不修改原 map）。
 func Set[M ~map[K]V, K comparable, V any](m M, key K, val V) M {
 	nm := maps.Clone(m)
+	if nm == nil {
+		nm = make(M)
+	}
 	nm[key] = val
 	return nm
 }
