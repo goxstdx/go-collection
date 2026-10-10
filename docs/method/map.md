@@ -1,6 +1,6 @@
 # Map
 
-适用集合：slice_collcection
+适用集合：slice_collection
 
 `Map[R any](func(item T, key int) R) *Collection[R]`
 

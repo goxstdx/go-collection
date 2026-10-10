@@ -1,4 +1,4 @@
-package slice_collcection
+package slice_collection
 
 import (
 	"fmt"
@@ -656,26 +656,25 @@ func TestReverse(t *testing.T) {
 
 // TestShuffle tests the Shuffle method of the Collection struct
 func TestShuffle(t *testing.T) {
-	// create a new Collection with some elements
 	coll := NewCollection([]int{1, 2, 3})
+	// Shuffle 会改原集合，先留下未打乱的副本再比较。
+	original := coll.Copy()
 
-	// shuffle the collection
 	shuffledColl := coll.Shuffle()
 
-	// check if the length of the shuffled collection is correct
 	if len(shuffledColl.value) != 3 {
 		t.Errorf("Shuffle did not return the correct number of elements")
 	}
 
-	if ok, err := coll.Contains(shuffledColl.value[0]); !ok || err != nil {
+	if ok, err := original.Contains(shuffledColl.value[0]); !ok || err != nil {
 		t.Errorf("Shuffle did not return the correct elements, %v", err)
 	}
 
-	if ok, err := coll.Contains(shuffledColl.value[1]); !ok || err != nil {
+	if ok, err := original.Contains(shuffledColl.value[1]); !ok || err != nil {
 		t.Errorf("Shuffle did not return the correct elements, %v", err)
 	}
 
-	if ok, err := coll.Contains(shuffledColl.value[2]); !ok || err != nil {
+	if ok, err := original.Contains(shuffledColl.value[2]); !ok || err != nil {
 		t.Errorf("Shuffle did not return the correct elements, %v", err)
 	}
 }
@@ -737,19 +736,21 @@ func TestDD(t *testing.T) {
 	// the DD method should not return anything, so there is nothing to check
 }
 
-// TestPluckString tests the PluckString method of the Collection struct
+// TestPluckFieldString 用函数取出字符串字段。
 type Person struct {
 	Name string
 	Age  string
 }
 
-func TestPluckString(t *testing.T) {
+func TestPluckFieldString(t *testing.T) {
 	// create a new Collection with some elements
-	coll := NewCollection([]Person{
-		{"Alice", "20"},
-		{"Bob", "30"},
-		{"Charlie", "40"},
-	})
+	coll := NewCollection(
+		[]Person{
+			{"Alice", "20"},
+			{"Bob", "30"},
+			{"Charlie", "40"},
+		},
+	)
 
 	pluckedColl := coll.PluckField(func(p Person) string { return p.Name })
 
@@ -765,7 +766,7 @@ func TestPluckString(t *testing.T) {
 
 }
 
-func TestPluckStringPointer(t *testing.T) {
+func TestPluckFieldStringPointer(t *testing.T) {
 	// create a new Collection with some elements
 	person1 := Person{"Alice", "20"}
 	person2 := Person{"Bob", "30"}
@@ -786,106 +787,111 @@ func TestPluckStringPointer(t *testing.T) {
 
 }
 
-func TestPluckInt64(t *testing.T) {
+func TestPluckFieldInt64(t *testing.T) {
 	// create a new Collection with some elements
 	type Person struct {
 		Id  int64
 		Age int64
 	}
-	coll := NewCollection([]Person{
-		{1, 20},
-		{2, 30},
-		{3, 40},
-	})
+	coll := NewCollection(
+		[]Person{
+			{1, 20},
+			{2, 30},
+			{3, 40},
+		},
+	)
 
 	pluckedColl := coll.PluckField(func(p Person) int64 { return p.Id })
 
 	// check if the length of the plucked collection is correct
 	if pluckedColl.Count() != 3 {
-		t.Errorf("PluckInt64 did not return the correct number of elements")
+		t.Errorf("PluckField did not return the correct number of elements")
 	}
 
 	// check if the plucked collection contains the correct elements
 	if pluckedColl.Index(0) != 1 {
-		t.Errorf("PluckInt64 did not return the correct elements")
+		t.Errorf("PluckField did not return the correct elements")
 	}
 }
 
-// TestPluckFloat64 tests the PluckFloat64 method of the Collection struct
-func TestPluckFloat64(t *testing.T) {
+func TestPluckFieldFloat64(t *testing.T) {
 	// create a new Collection with some elements
 	type Product struct {
 		Price    float64
 		Quantity int
 	}
-	coll := NewCollection([]Product{
-		{1.99, 10},
-		{2.99, 20},
-		{3.99, 30},
-	})
+	coll := NewCollection(
+		[]Product{
+			{1.99, 10},
+			{2.99, 20},
+			{3.99, 30},
+		},
+	)
 
 	pluckedColl := coll.PluckField(func(p Product) float64 { return p.Price })
 
 	// check if the length of the plucked collection is correct
 	if pluckedColl.Count() != 3 {
-		t.Errorf("PluckFloat64 did not return the correct number of elements")
+		t.Errorf("PluckField did not return the correct number of elements")
 	}
 
 	// check if the plucked collection contains the correct elements
 	if pluckedColl.Index(0) != 1.99 || pluckedColl.Index(1) != 2.99 || pluckedColl.Index(2) != 3.99 {
-		t.Errorf("PluckFloat64 did not return the correct elements")
+		t.Errorf("PluckField did not return the correct elements")
 	}
 }
 
-// TestPluckUint64 tests the PluckUint64 method of the Collection struct
-func TestPluckUint64(t *testing.T) {
+func TestPluckFieldUint64(t *testing.T) {
 	// create a new Collection with some elements
 	type Person struct {
 		Id  uint64
 		Age uint64
 	}
-	coll := NewCollection([]Person{
-		{1, 20},
-		{2, 30},
-		{3, 40},
-	})
+	coll := NewCollection(
+		[]Person{
+			{1, 20},
+			{2, 30},
+			{3, 40},
+		},
+	)
 
 	pluckedColl := coll.PluckField(func(p Person) uint64 { return p.Id })
 
 	// check if the length of the plucked collection is correct
 	if pluckedColl.Count() != 3 {
-		t.Errorf("PluckUint64 did not return the correct number of elements")
+		t.Errorf("PluckField did not return the correct number of elements")
 	}
 
 	// check if the plucked collection contains the correct elements
 	if pluckedColl.Index(0) != 1 || pluckedColl.Index(1) != 2 || pluckedColl.Index(2) != 3 {
-		t.Errorf("PluckUint64 did not return the correct elements")
+		t.Errorf("PluckField did not return the correct elements")
 	}
 }
 
-// TestPluckBool tests the PluckBool method of the Collection struct
-func TestPluckBool(t *testing.T) {
+func TestPluckFieldBool(t *testing.T) {
 	// create a new Collection with some elements
 	type User struct {
 		IsActive bool
 		IsAdmin  bool
 	}
-	coll := NewCollection([]User{
-		{true, false},
-		{false, true},
-		{true, true},
-	})
+	coll := NewCollection(
+		[]User{
+			{true, false},
+			{false, true},
+			{true, true},
+		},
+	)
 
 	pluckedColl := coll.PluckField(func(u User) bool { return u.IsActive })
 
 	// check if the length of the plucked collection is correct
 	if pluckedColl.Count() != 3 {
-		t.Errorf("PluckBool did not return the correct number of elements")
+		t.Errorf("PluckField did not return the correct number of elements")
 	}
 
 	// check if the plucked collection contains the correct elements
 	if pluckedColl.Index(0) != true || pluckedColl.Index(1) != false || pluckedColl.Index(2) != true {
-		t.Errorf("PluckBool did not return the correct elements")
+		t.Errorf("PluckField did not return the correct elements")
 	}
 }
 
@@ -896,11 +902,13 @@ func TestSortBy(t *testing.T) {
 		Id  int
 		Age int
 	}
-	coll := NewCollection([]Person{
-		{3, 20},
-		{1, 30},
-		{2, 40},
-	})
+	coll := NewCollection(
+		[]Person{
+			{3, 20},
+			{1, 30},
+			{2, 40},
+		},
+	)
 
 	sortedColl := coll.SortBy(func(p Person) int { return p.Id })
 
@@ -915,30 +923,34 @@ func TestSortBy(t *testing.T) {
 	}
 }
 
-// TestSortFloatBy tests the SortFloatBy method of the Collection struct
-func TestSortFloatBy(t *testing.T) {
+// TestSortByParsedFloat 先把字符串解析成 float64，再交给 SortBy。
+func TestSortByParsedFloat(t *testing.T) {
 	// create a new Collection with some elements
 	type T struct {
 		Deductible string `json:"deductible"`
 		Amount     string `json:"amount"`
 	}
 
-	coll := NewCollection([]T{
-		{"1000", "47222.3192575596"},
-		{"50", "49870.2997764566"},
-		{"100", "47222.3192575596"},
-		{"250", "47222.3192575596"},
-		{"200", "47222.3192575596"},
-	})
+	coll := NewCollection(
+		[]T{
+			{"1000", "47222.3192575596"},
+			{"50", "49870.2997764566"},
+			{"100", "47222.3192575596"},
+			{"250", "47222.3192575596"},
+			{"200", "47222.3192575596"},
+		},
+	)
 
-	sortedColl := coll.SortBy(func(v T) float64 {
-		f, err := strconv.ParseFloat(v.Deductible, 64)
-		if err != nil {
-			t.Errorf("parse float err: %v", err)
-			return 0
-		}
-		return f
-	})
+	sortedColl := coll.SortBy(
+		func(v T) float64 {
+			f, err := strconv.ParseFloat(v.Deductible, 64)
+			if err != nil {
+				t.Errorf("parse float err: %v", err)
+				return 0
+			}
+			return f
+		},
+	)
 
 	// check if the length of the sorted collection is correct
 	if len(sortedColl.value) != coll.Count() {
@@ -959,11 +971,13 @@ func TestSortByPtr(t *testing.T) {
 		Id  int
 		Age int
 	}
-	coll := NewCollection([]*Person{
-		{3, 20},
-		{1, 30},
-		{2, 40},
-	})
+	coll := NewCollection(
+		[]*Person{
+			{3, 20},
+			{1, 30},
+			{2, 40},
+		},
+	)
 
 	sortedColl := coll.SortBy(func(p *Person) int { return p.Id })
 
@@ -986,29 +1000,33 @@ func TestSortByFunc(t *testing.T) {
 		Amount     string `json:"amount"`
 	}
 
-	coll := NewCollection([]T{
-		{"1000", "47222.3192575596"},
-		{"50", "49870.2997764566"},
-		{"100", "47222.3192575596"},
-		{"250", "47222.3192575596"},
-		{"200", "47222.3192575596"},
-	})
+	coll := NewCollection(
+		[]T{
+			{"1000", "47222.3192575596"},
+			{"50", "49870.2997764566"},
+			{"100", "47222.3192575596"},
+			{"250", "47222.3192575596"},
+			{"200", "47222.3192575596"},
+		},
+	)
 
 	// sort the collection by the "id" field
-	sortedColl, err := coll.SortByFunc(func(v1, v2 T) bool {
-		intV1, err := strconv.ParseFloat(v1.Deductible, 64)
-		if err != nil {
-			t.Errorf("parse float err: %v", err)
-			return false
-		}
-		intV2, err := strconv.ParseFloat(v2.Deductible, 64)
-		if err != nil {
-			t.Errorf("parse float err: %v", err)
-			return false
-		}
+	sortedColl, err := coll.SortByFunc(
+		func(v1, v2 T) bool {
+			intV1, err := strconv.ParseFloat(v1.Deductible, 64)
+			if err != nil {
+				t.Errorf("parse float err: %v", err)
+				return false
+			}
+			intV2, err := strconv.ParseFloat(v2.Deductible, 64)
+			if err != nil {
+				t.Errorf("parse float err: %v", err)
+				return false
+			}
 
-		return intV1 < intV2
-	})
+			return intV1 < intV2
+		},
+	)
 	if err != nil {
 		t.Errorf("SortBy returned an error, %v", err)
 	}
@@ -1032,11 +1050,13 @@ func TestSortByDesc(t *testing.T) {
 		Id  int
 		Age int
 	}
-	coll := NewCollection([]Person{
-		{3, 20},
-		{1, 30},
-		{2, 40},
-	})
+	coll := NewCollection(
+		[]Person{
+			{3, 20},
+			{1, 30},
+			{2, 40},
+		},
+	)
 
 	sortedColl := coll.SortByDesc(func(p Person) int { return p.Id })
 
@@ -1058,11 +1078,13 @@ func TestSortByDescPtr(t *testing.T) {
 		Id  int
 		Age int
 	}
-	coll := NewCollection([]*Person{
-		{3, 20},
-		{1, 30},
-		{2, 40},
-	})
+	coll := NewCollection(
+		[]*Person{
+			{3, 20},
+			{1, 30},
+			{2, 40},
+		},
+	)
 
 	sortedColl := coll.SortByDesc(func(p *Person) int { return p.Id })
 
@@ -1077,33 +1099,34 @@ func TestSortByDescPtr(t *testing.T) {
 	}
 }
 
-// TestKeyByStrField tests the KeyByStrField method of the Collection struct
-func TestKeyByStrField(t *testing.T) {
+func TestKeyBy(t *testing.T) {
 	// create a new Collection with some elements
 	type Person struct {
 		Name string
 		Age  string
 	}
-	coll := NewCollection([]Person{
-		{"Alice", "20"},
-		{"Bob", "30"},
-		{"Charlie", "40"},
-	})
+	coll := NewCollection(
+		[]Person{
+			{"Alice", "20"},
+			{"Bob", "30"},
+			{"Charlie", "40"},
+		},
+	)
 
 	keyedColl := coll.KeyBy(func(p Person) string { return p.Name })
 
 	// check if the length of the keyed collection is correct
 	if len(keyedColl) != 3 {
-		t.Errorf("KeyByStrField did not return the correct number of elements")
+		t.Errorf("KeyBy did not return the correct number of elements")
 	}
 
 	// check if the keyed collection contains the correct elements
 	if _, ok := keyedColl["Alice"]; !ok {
-		t.Errorf("KeyByStrField did not return the correct elements")
+		t.Errorf("KeyBy did not return the correct elements")
 	}
 
 	if _, ok := keyedColl["Bob"]; !ok {
-		t.Errorf("KeyByStrField did not return the correct elements")
+		t.Errorf("KeyBy did not return the correct elements")
 	}
 }
 
@@ -1247,9 +1270,11 @@ func TestJoin(t *testing.T) {
 	}
 
 	// join the elements of the collection with a comma separator and a custom format function
-	joinedStr = coll.Join(",", func(item interface{}) string {
-		return strings.ToUpper(item.(string))
-	})
+	joinedStr = coll.Join(
+		",", func(item string) string {
+			return strings.ToUpper(item)
+		},
+	)
 
 	// check if the joined string with custom format is correct
 	if joinedStr != "APPLE,BANANA,CHERRY" {

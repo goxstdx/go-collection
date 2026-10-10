@@ -1,6 +1,6 @@
 # Filter
 
-适用集合：slice_collcection
+适用集合：slice_collection
 
 `Filter(func(item T, key int) bool) *Collection[T]`
 

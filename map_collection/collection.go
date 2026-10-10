@@ -317,7 +317,7 @@ func (c *Collection[K, V]) LastWhere(fn func(value V, key K) bool) (K, V, bool) 
 	return zk, zv, false
 }
 
-// ToMap 返回底层的 map（这是一个引用，修改会影响 Collection）
+// All 返回底层 map。这是引用，修改会影响 Collection。
 func (c *Collection[K, V]) All() map[K]V {
 	return c.value
 }

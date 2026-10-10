@@ -2,7 +2,7 @@
 //
 // 提供过滤、映射、排序、查找、聚合、分组、分页、序列化等常见操作，
 // 旨在在不追求极致性能的业务场景下提升开发效率。
-package slice_collcection
+package slice_collection
 
 import (
 	"cmp"
@@ -17,17 +17,14 @@ import (
 	"github.com/ZHOUXING1997/collection/errorx"
 )
 
-// basicOrderedCmp 返回预声明有序类型的比较函数，并缓存在集合上。
-// 结构体等非基础类型返回 NoComparableError，调用方必须使用 By 方法。
-func (c *Collection[T]) basicOrderedCmp() (func(T, T) int, error) {
-	if c.orderedCmp != nil {
-		return c.orderedCmp, nil
-	}
+// basicOrderedCmp 返回预声明有序类型的比较函数。
+// 结构体和定义类型返回 NoComparableError，调用方必须使用 By 方法。
+// 不缓存在集合上：只读方法会被并发调用，而这里只是一次类型开关。
+func basicOrderedCmp[T any]() (func(T, T) int, error) {
 	fn := defaultCompare[T]()
 	if fn == nil {
 		return nil, errorx.NoComparableError
 	}
-	c.orderedCmp = fn
 	return fn, nil
 }
 
@@ -60,13 +57,13 @@ func (c *Collection[T]) IsNotEmpty() bool {
 	return len(c.value) != 0
 }
 
-// Append 添加元素
+// Append 在尾部添加元素，直接修改当前集合。
 func (c *Collection[T]) Append(item T) *Collection[T] {
 	c.value = append(c.value, item)
 	return c
 }
 
-// Remove 删除元素
+// Remove 删除下标处的元素，直接修改当前集合。下标越界时不修改。
 func (c *Collection[T]) Remove(index int) *Collection[T] {
 	// 添加边界检查
 	if index < 0 || index >= len(c.value) {
@@ -76,23 +73,18 @@ func (c *Collection[T]) Remove(index int) *Collection[T] {
 	return c
 }
 
-// Insert 插入元素
+// Insert 在 index 处插入元素，直接修改当前集合。index 等于长度时追加到末尾，越界时不修改。
 func (c *Collection[T]) Insert(index int, item T) *Collection[T] {
-	// 添加边界检查
 	if index < 0 || index > len(c.value) {
 		return c
 	}
-	arr := make([]T, 0, len(c.value)+1)
-	arr = append(arr, c.value[:index]...)
-	arr = append(arr, item)
-	arr = append(arr, c.value[index:]...)
-	newColl := NewCollection[T](arr)
-	return newColl
+	c.value = slices.Insert(c.value, index, item)
+	return c
 }
 
 // Search 在预声明有序类型中查找元素，返回首次出现的下标。
 func (c *Collection[T]) Search(item T) (int, error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		return -1, err
 	}
@@ -118,7 +110,7 @@ func (c *Collection[T]) searchWith(item T, cmpFn func(a, b T) int) (int, error) 
 
 // Unique 对预声明有序类型去重，保留首次出现的元素。
 func (c *Collection[T]) Unique() (*Collection[T], error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +187,8 @@ func (c *Collection[T]) Last() T {
 	return c.value[len(c.value)-1]
 }
 
-// Slice 获取数组片段
+// Slice 返回 [start, end) 的新集合，复制元素，不和原集合共用底层数组。
+// 只传 start 时取到末尾。
 func (c *Collection[T]) Slice(params ...int) (*Collection[T], error) {
 	if len(params) == 0 {
 		return NewCollection[T](nil), fmt.Errorf("invalid params")
@@ -205,7 +198,7 @@ func (c *Collection[T]) Slice(params ...int) (*Collection[T], error) {
 		return NewCollection[T](nil), fmt.Errorf("invalid start index")
 	}
 	if len(params) == 1 {
-		return NewCollection(c.value[start:]), nil
+		return NewCollection(cloneSlice(c.value[start:])), nil
 	}
 	end := params[1]
 	if end < 0 || end > len(c.value) {
@@ -215,7 +208,7 @@ func (c *Collection[T]) Slice(params ...int) (*Collection[T], error) {
 		return NewCollection[T](nil), fmt.Errorf("start index should be less than end index")
 	}
 
-	return NewCollection(c.value[start:end]), nil
+	return NewCollection(cloneSlice(c.value[start:end])), nil
 }
 
 // Index 获取某个下标
@@ -230,7 +223,7 @@ func (c *Collection[T]) Index(i int) T {
 	return c.value[i]
 }
 
-// SetIndex 设置某个下标
+// SetIndex 设置下标处的元素，直接修改当前集合。下标越界时不修改。
 func (c *Collection[T]) SetIndex(i int, val T) *Collection[T] {
 	// if c.err != nil {
 	// 	return c
@@ -330,7 +323,7 @@ func (c *Collection[T]) Every(f func(item T, key int) bool) bool {
 	return true
 }
 
-// ForPage 分页
+// ForPage 返回该页元素的副本，不和原集合共用底层数组。
 func (c *Collection[T]) ForPage(page int, perPage int) (*Collection[T], error) {
 	if page <= 0 || perPage <= 0 {
 		return NewCollection[T](nil), fmt.Errorf("invalid page or perPage")
@@ -344,7 +337,7 @@ func (c *Collection[T]) ForPage(page int, perPage int) (*Collection[T], error) {
 		end = len(c.value)
 	}
 
-	return &Collection[T]{value: c.value[start:end]}, nil
+	return NewCollection(cloneSlice(c.value[start:end])), nil
 }
 
 // Nth 每隔n个取一个
@@ -376,7 +369,7 @@ func (c *Collection[T]) Pad(count int, def T) *Collection[T] {
 	return NewCollection[T](res)
 }
 
-// Pop 弹出最后一个元素
+// Pop 弹出并返回最后一个元素，直接修改当前集合。空集合返回零值。
 func (c *Collection[T]) Pop() T {
 	var zero T
 	if c.IsEmpty() {
@@ -387,18 +380,16 @@ func (c *Collection[T]) Pop() T {
 	return res
 }
 
-// Push 添加元素
+// Push 在尾部添加元素，直接修改当前集合。
 func (c *Collection[T]) Push(item T) *Collection[T] {
 	c.value = append(c.value, item)
 	return c
 }
 
-// Prepend 添加元素到头部
+// Prepend 在头部插入元素，直接修改当前集合。
 func (c *Collection[T]) Prepend(item T) *Collection[T] {
-	res := make([]T, 0, len(c.value)+1)
-	res = append(res, item)
-	res = append(res, c.value...)
-	return NewCollection[T](res)
+	c.value = slices.Insert(c.value, 0, item)
+	return c
 }
 
 // Random 随机取一个元素
@@ -411,25 +402,20 @@ func (c *Collection[T]) Random() T {
 	return c.value[random.Intn(len(c.value))]
 }
 
-// Reverse 反转
+// Reverse 反转元素顺序，直接修改当前集合。
 func (c *Collection[T]) Reverse() *Collection[T] {
-	res := make([]T, 0, len(c.value))
-	for i := len(c.value) - 1; i >= 0; i-- {
-		res = append(res, c.value[i])
-	}
-
-	return NewCollection(res)
+	slices.Reverse(c.value)
+	return c
 }
 
-// Shuffle 随机排序
+// Shuffle 打乱元素顺序，直接修改当前集合。
 func (c *Collection[T]) Shuffle() *Collection[T] {
-	res := make([]T, len(c.value))
-	perm := rand.Perm(len(c.value))
-	for i, v := range perm {
-		res[v] = c.value[i]
-	}
-
-	return NewCollection(res)
+	rand.Shuffle(
+		len(c.value), func(i, j int) {
+			c.value[i], c.value[j] = c.value[j], c.value[i]
+		},
+	)
+	return c
 }
 
 // GroupBy 按 f 的返回值分组。K 必须可比较。
@@ -446,7 +432,7 @@ func (c *Collection[T]) GroupBy[K comparable](f func(T, int) K) map[K]*Collectio
 	return res
 }
 
-// Split 按照size个数进行分组
+// Split 按 size 分组，每组都是元素副本，不和原集合共用底层数组。
 func (c *Collection[T]) Split(size int) []*Collection[T] {
 	if size <= 0 {
 		return []*Collection[T]{}
@@ -457,7 +443,7 @@ func (c *Collection[T]) Split(size int) []*Collection[T] {
 		if end > len(c.value) {
 			end = len(c.value)
 		}
-		res = append(res, NewCollection(c.value[i:end]))
+		res = append(res, NewCollection(cloneSlice(c.value[i:end])))
 	}
 
 	return res
@@ -487,9 +473,11 @@ func (c *Collection[T]) PluckField[R any](fn func(T) R) *Collection[R] {
 // SortBy 按 fn 提取的值升序排列，直接修改当前集合。
 // 使用稳定排序：本次比较相等的元素保持排序前的相对顺序，因此可以先排次要字段，再排主要字段。
 func (c *Collection[T]) SortBy[R cmp.Ordered](fn func(T) R) *Collection[T] {
-	slices.SortStableFunc(c.value, func(a, b T) int {
-		return cmp.Compare(fn(a), fn(b))
-	})
+	slices.SortStableFunc(
+		c.value, func(a, b T) int {
+			return cmp.Compare(fn(a), fn(b))
+		},
+	)
 
 	return c
 }
@@ -497,9 +485,11 @@ func (c *Collection[T]) SortBy[R cmp.Ordered](fn func(T) R) *Collection[T] {
 // SortByFunc 按自定义比较函数排序，直接修改当前集合。fn 返回 true 表示 v1 应排在 v2 前面。
 // 使用稳定排序，比较结果相等时保留原相对顺序。
 func (c *Collection[T]) SortByFunc(fn func(v1, v2 T) bool) (*Collection[T], error) {
-	sort.SliceStable(c.value, func(i, j int) bool {
-		return fn(c.value[i], c.value[j])
-	})
+	sort.SliceStable(
+		c.value, func(i, j int) bool {
+			return fn(c.value[i], c.value[j])
+		},
+	)
 
 	return c, nil
 }
@@ -507,9 +497,11 @@ func (c *Collection[T]) SortByFunc(fn func(v1, v2 T) bool) (*Collection[T], erro
 // SortByDesc 按 fn 提取的值降序排列，直接修改当前集合。
 // 使用稳定排序：本次比较相等的元素保持排序前的相对顺序。
 func (c *Collection[T]) SortByDesc[R cmp.Ordered](fn func(T) R) *Collection[T] {
-	slices.SortStableFunc(c.value, func(a, b T) int {
-		return cmp.Compare(fn(b), fn(a))
-	})
+	slices.SortStableFunc(
+		c.value, func(a, b T) int {
+			return cmp.Compare(fn(b), fn(a))
+		},
+	)
 
 	return c
 }
@@ -526,7 +518,7 @@ func (c *Collection[T]) KeyBy[K comparable](fn func(T) K) map[K]T {
 
 // Max 返回预声明有序类型中的最大元素。空集合返回 EmptyError，不把零值当作结果。
 func (c *Collection[T]) Max() (T, error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		var zero T
 		return zero, err
@@ -559,7 +551,7 @@ func (c *Collection[T]) maxWith(cmpFn func(a, b T) int) (T, error) {
 
 // Min 返回预声明有序类型中的最小元素。空集合返回 EmptyError，不把零值当作结果。
 func (c *Collection[T]) Min() (T, error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		var zero T
 		return zero, err
@@ -592,7 +584,7 @@ func (c *Collection[T]) minWith(cmpFn func(a, b T) int) (T, error) {
 
 // Contains 判断预声明有序类型是否包含某个元素。
 func (c *Collection[T]) Contains(obj T) (bool, error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		return false, err
 	}
@@ -618,7 +610,7 @@ func (c *Collection[T]) containsWith(obj T, cmpFn func(a, b T) int) bool {
 
 // ContainsCount 返回预声明有序类型中等于 obj 的元素个数。
 func (c *Collection[T]) ContainsCount(obj T) (int, error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		return 0, err
 	}
@@ -645,7 +637,7 @@ func (c *Collection[T]) containsCountWith(obj T, cmpFn func(a, b T) int) int {
 
 // Diff 返回存在于当前集合、但不存在于 arr 的元素。仅适用于预声明有序类型。
 func (c *Collection[T]) Diff(arr *Collection[T]) (*Collection[T], error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		return nil, err
 	}
@@ -673,7 +665,7 @@ func (c *Collection[T]) diffWith(arr *Collection[T], cmpFn func(a, b T) int) *Co
 // Sort 按元素自身升序排列，仅适用于预声明有序类型。直接修改当前集合。
 // 稳定排序，比较结果相等时保留原相对顺序。
 func (c *Collection[T]) Sort() (*Collection[T], error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		return nil, err
 	}
@@ -685,19 +677,21 @@ func (c *Collection[T]) Sort() (*Collection[T], error) {
 // SortDesc 按元素自身降序排列，仅适用于预声明有序类型。直接修改当前集合。
 // 稳定排序，比较结果相等时保留原相对顺序。
 func (c *Collection[T]) SortDesc() (*Collection[T], error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		return nil, err
 	}
 
-	slices.SortStableFunc(c.value, func(a, b T) int {
-		return cmpFn(b, a)
-	})
+	slices.SortStableFunc(
+		c.value, func(a, b T) int {
+			return cmpFn(b, a)
+		},
+	)
 	return c, nil
 }
 
-// Join 进行拼接
-func (c *Collection[T]) Join(split string, format ...func(item interface{}) string) string {
+// Join 用 split 拼接元素。format 用于自定义每个元素的文本。
+func (c *Collection[T]) Join(split string, format ...func(item T) string) string {
 	if c.IsEmpty() {
 		return ""
 	}
@@ -723,7 +717,7 @@ func (c *Collection[T]) Join(split string, format ...func(item interface{}) stri
 
 // Union 返回两个预声明有序类型集合的并集，保留当前集合中的重复情况，再追加 arr 中没有的元素。
 func (c *Collection[T]) Union(arr *Collection[T]) (*Collection[T], error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		return nil, err
 	}
@@ -761,7 +755,7 @@ func arrValue[T any](arr *Collection[T]) []T {
 
 // Intersect 返回两个预声明有序类型集合的交集，保留当前集合中的出现顺序和重复。
 func (c *Collection[T]) Intersect(arr *Collection[T]) (*Collection[T], error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		return nil, err
 	}
@@ -804,7 +798,7 @@ func (c *Collection[T]) Median[N number](fn func(T) N) float64 {
 
 	nums := make([]float64, len(c.value))
 	for i, item := range c.value {
-		nums[i] = toFloat(fn(item))
+		nums[i] = float64(fn(item))
 	}
 	slices.Sort(nums)
 
@@ -819,7 +813,7 @@ func (c *Collection[T]) Median[N number](fn func(T) N) float64 {
 // Mode 返回预声明有序类型中出现次数最多的元素。空集合返回 EmptyError。
 // 次数相同时，保留先出现的那个。
 func (c *Collection[T]) Mode() (T, error) {
-	cmpFn, err := c.basicOrderedCmp()
+	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
 		var zero T
 		return zero, err
@@ -874,13 +868,13 @@ func (c *Collection[T]) modeWith(cmpFn func(a, b T) int) (T, error) {
 func (c *Collection[T]) Sum[N number](fn func(T) N) float64 {
 	var sum float64
 	for _, item := range c.value {
-		sum += toFloat(fn(item))
+		sum += float64(fn(item))
 	}
 
 	return sum
 }
 
-// Values 获取值
+// Values 返回内部切片。这是引用，修改会影响当前集合，也会影响 NewCollection 时传入的切片。
 func (c *Collection[T]) Values() []T {
 	return c.value
 }
@@ -890,7 +884,7 @@ func (c *Collection[T]) ToJson() ([]byte, error) {
 	return json.Marshal(c.value)
 }
 
-// FromJson 从json中获取数据
+// FromJson 用 JSON 数组替换当前元素，直接修改当前集合。
 func (c *Collection[T]) FromJson(data []byte) error {
 	return json.Unmarshal(data, &c.value)
 }

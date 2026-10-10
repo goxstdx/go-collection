@@ -1,6 +1,6 @@
 # Avg
 
-适用集合：slice_collcection
+适用集合：slice_collection
 
 `Avg[N number](fn func(T) N) float64`
 

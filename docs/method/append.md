@@ -1,6 +1,6 @@
 # Append
 
-适用集合：slice_collcection
+适用集合：slice_collection
 
 `Append(item T) *Collection[T]`
 

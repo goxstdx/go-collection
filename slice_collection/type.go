@@ -1,12 +1,11 @@
-package slice_collcection
+package slice_collection
 
-// number 是可以累加为 float64 的预声明数值类型。
-// 不用 ~，因为泛型函数体不能把整组联合类型直接转成 float64，
-// 只能按具体类型做类型开关；定义类型请在传入的函数里先转成预声明类型。
+// number 是底层类型为整数或浮点数的类型。
+// 带 ~，type Money int64 这类定义类型也可以交给 Sum、Avg、Median。
 type number interface {
-	int | int8 | int16 | int32 | int64 |
-		uint | uint8 | uint16 | uint32 | uint64 |
-		float32 | float64
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
+		~float32 | ~float64
 }
 
 // Collection 是集合操作的核心结构，实现了对各种数据类型的集合操作。
@@ -22,7 +21,4 @@ type number interface {
 //	})
 type Collection[T any] struct {
 	value []T // 数组
-
-	// orderedCmp 只缓存预声明有序类型的默认比较函数，在第一次需要比较时生成。
-	orderedCmp func(T, T) int
 }

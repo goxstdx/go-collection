@@ -718,3 +718,22 @@ func TestSafeCollectionConcurrentFilterToEmpty(t *testing.T) {
 		t.Error("Filter should not modify original collection")
 	}
 }
+
+// TestSafeCollectionAllReturnsCopy 验证 All 返回的 map 在锁外修改不会写回集合。
+func TestSafeCollectionAllReturnsCopy(t *testing.T) {
+	sc := map_collection.NewSafeCollection(map[string]int{"a": 1})
+	all := sc.All()
+	all["a"] = 2
+	if sc.GetValue("a") != 1 {
+		t.Fatalf("All() leaked the internal map, value = %d", sc.GetValue("a"))
+	}
+}
+
+// TestSafeCollectionReduceTyped 验证 Reduce 使用调用方的累加类型。
+func TestSafeCollectionReduceTyped(t *testing.T) {
+	sc := map_collection.NewSafeCollection(map[string]int{"a": 1, "b": 2})
+	sum := sc.Reduce(0, func(acc int, v int, _ string) int { return acc + v })
+	if sum != 3 {
+		t.Fatalf("Reduce() = %d, want 3", sum)
+	}
+}

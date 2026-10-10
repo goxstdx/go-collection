@@ -1,10 +1,10 @@
 # Sum
 
-适用集合：slice_collcection
+适用集合：slice_collection
 
 `Sum[N number](fn func(T) N) float64`
 
-用 `fn` 从每个元素取出数值后求和，结果为 `float64`。`N` 只能是预声明的整数或浮点类型。空集合返回 `0`。
+用 `fn` 从每个元素取出数值后求和，结果为 `float64`。`N` 的底层类型必须是整数或浮点数，`type Money int64` 可以直接使用。空集合返回 `0`。
 
 ```go
 c := collection.NewSliceCollect([]int{1, 2, 2, 3})

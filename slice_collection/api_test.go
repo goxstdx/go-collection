@@ -1,4 +1,4 @@
-package slice_collcection
+package slice_collection
 
 import (
 	"cmp"
@@ -10,18 +10,26 @@ import (
 
 // TestBasicTypesCompareAtCall 验证预声明有序类型在调用时生成比较函数。
 func TestBasicTypesCompareAtCall(t *testing.T) {
-	t.Run("int", func(t *testing.T) {
-		assertBasicOrder(t, []int{3, 1, 2}, 1, 3)
-	})
-	t.Run("string", func(t *testing.T) {
-		assertBasicOrder(t, []string{"b", "a", "c"}, "a", "c")
-	})
-	t.Run("float64", func(t *testing.T) {
-		assertBasicOrder(t, []float64{1.5, 0.5, 2}, 0.5, 2)
-	})
-	t.Run("uint8", func(t *testing.T) {
-		assertBasicOrder(t, []uint8{3, 1, 2}, 1, 3)
-	})
+	t.Run(
+		"int", func(t *testing.T) {
+			assertBasicOrder(t, []int{3, 1, 2}, 1, 3)
+		},
+	)
+	t.Run(
+		"string", func(t *testing.T) {
+			assertBasicOrder(t, []string{"b", "a", "c"}, "a", "c")
+		},
+	)
+	t.Run(
+		"float64", func(t *testing.T) {
+			assertBasicOrder(t, []float64{1.5, 0.5, 2}, 0.5, 2)
+		},
+	)
+	t.Run(
+		"uint8", func(t *testing.T) {
+			assertBasicOrder(t, []uint8{3, 1, 2}, 1, 3)
+		},
+	)
 }
 
 func assertBasicOrder[T cmp.Ordered](t *testing.T, in []T, wantMin, wantMax T) {
@@ -79,12 +87,14 @@ type record struct {
 func byAge(a, b record) int { return cmp.Compare(a.Age, b.Age) }
 
 func sampleRecords() *Collection[record] {
-	return NewCollection([]record{
-		{ID: 1, Name: "a", Age: 10},
-		{ID: 2, Name: "b", Age: 8},
-		{ID: 3, Name: "c", Age: 8},
-		{ID: 4, Name: "d", Age: 10},
-	})
+	return NewCollection(
+		[]record{
+			{ID: 1, Name: "a", Age: 10},
+			{ID: 2, Name: "b", Age: 8},
+			{ID: 3, Name: "c", Age: 8},
+			{ID: 4, Name: "d", Age: 10},
+		},
+	)
 }
 
 // TestStructRequiresByMethod 验证结构体无参比较返回错误，By 方法按传入函数比较。
@@ -106,9 +116,11 @@ func TestStructRequiresByMethod(t *testing.T) {
 		t.Fatalf("MinBy() = %+v, %v; want id 2", youngest, err)
 	}
 
-	ok, err := c.ContainsBy(record{Name: "c"}, func(a, b record) int {
-		return cmp.Compare(a.Name, b.Name)
-	})
+	ok, err := c.ContainsBy(
+		record{Name: "c"}, func(a, b record) int {
+			return cmp.Compare(a.Name, b.Name)
+		},
+	)
 	if err != nil || !ok {
 		t.Fatalf("ContainsBy() = %v, %v", ok, err)
 	}
@@ -209,9 +221,11 @@ func TestMapAndAggregateUseCallerFunc(t *testing.T) {
 		t.Fatalf("Map() = %v", names.Values())
 	}
 
-	ages := c.MapFilter(func(r record, _ int) (int, bool) {
-		return r.Age, r.Age < 10
-	})
+	ages := c.MapFilter(
+		func(r record, _ int) (int, bool) {
+			return r.Age, r.Age < 10
+		},
+	)
 	if ages.Count() != 2 || ages.Index(0) != 8 || ages.Index(1) != 8 {
 		t.Fatalf("MapFilter() = %v", ages.Values())
 	}
@@ -232,5 +246,82 @@ func TestMapAndAggregateUseCallerFunc(t *testing.T) {
 	}
 	if NewCollection([]int{}).Sum(func(n int) int { return n }) != 0 {
 		t.Fatal("Sum() on empty collection should be 0")
+	}
+}
+
+// TestDefinedNumericTypeCanAggregate 验证定义数值类型可以直接求和。
+func TestDefinedNumericTypeCanAggregate(t *testing.T) {
+	type money int64
+	got := NewCollection([]money{1, 2, 3}).Sum(func(m money) money { return m })
+	if got != 6 {
+		t.Fatalf("Sum() = %v, want 6", got)
+	}
+}
+
+// TestConcurrentReadDoesNotRace 验证只读比较不会写集合字段。
+func TestConcurrentReadDoesNotRace(t *testing.T) {
+	c := NewCollection([]int{1, 2, 3})
+	done := make(chan struct{})
+	for i := 0; i < 8; i++ {
+		go func() {
+			for j := 0; j < 100; j++ {
+				if _, err := c.Max(); err != nil {
+					t.Errorf("Max() error: %v", err)
+				}
+				if _, err := c.Contains(2); err != nil {
+					t.Errorf("Contains() error: %v", err)
+				}
+			}
+			done <- struct{}{}
+		}()
+	}
+	for i := 0; i < 8; i++ {
+		<-done
+	}
+}
+
+// TestViewMethodsReturnCopies 验证分页和切分的结果不和原集合共用底层数组。
+func TestViewMethodsReturnCopies(t *testing.T) {
+	c := NewCollection([]int{1, 2, 3, 4})
+
+	part, err := c.Slice(0, 2)
+	if err != nil {
+		t.Fatalf("Slice() error: %v", err)
+	}
+	part.Push(9)
+	if c.Index(2) != 3 {
+		t.Fatalf("Slice result changed the original: %v", c.Values())
+	}
+
+	page, err := c.ForPage(1, 2)
+	if err != nil {
+		t.Fatalf("ForPage() error: %v", err)
+	}
+	page.SetIndex(0, 8)
+	if c.Index(0) != 1 {
+		t.Fatalf("ForPage result changed the original: %v", c.Values())
+	}
+
+	parts := c.Split(2)
+	parts[0].SetIndex(0, 7)
+	if c.Index(0) != 1 {
+		t.Fatalf("Split result changed the original: %v", c.Values())
+	}
+}
+
+// TestContainerAndReorderMutate 验证插入、前置、反转、打乱都改当前集合。
+func TestContainerAndReorderMutate(t *testing.T) {
+	c := NewCollection([]int{1, 2, 3})
+	if c.Insert(0, 0) != c || c.Values()[0] != 0 {
+		t.Fatalf("Insert() = %v", c.Values())
+	}
+	if c.Prepend(9) != c || c.Values()[0] != 9 {
+		t.Fatalf("Prepend() = %v", c.Values())
+	}
+	if c.Reverse() != c || c.Values()[0] != 3 {
+		t.Fatalf("Reverse() = %v", c.Values())
+	}
+	if c.Shuffle() != c || c.Count() != 5 {
+		t.Fatalf("Shuffle() = %v", c.Values())
 	}
 }

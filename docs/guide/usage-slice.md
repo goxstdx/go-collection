@@ -1,4 +1,4 @@
-# 切片集合使用（slice_collcection）
+# 切片集合使用（slice_collection）
 
 需要 Go 1.27。比较、取值和聚合都通过泛型方法完成，不再按字段名做反射。
 
@@ -11,7 +11,7 @@ empty := collection.NewEmptyCollection[string]()
 
 ## 比较
 
-`int`、`uint`（含各宽度）、`float32`、`float64`、`string` 直接调用无参方法。比较函数在第一次调用时生成，并缓存在当前集合上。
+`int`、`uint`（含各宽度）、`float32`、`float64`、`string` 直接调用无参方法。比较函数在调用时按元素类型生成，不保存在集合上。
 
 `type MyInt int` 这类定义类型，以及结构体，必须使用 `By` 方法并传入 `func(a, b T) int`。返回值小于 0 表示 `a < b`，等于 0 表示相等，大于 0 表示 `a > b`。传入 `nil` 会得到 `errorx.NilFunc`。
 
@@ -78,4 +78,4 @@ _ = sum
 `Sum`、`Avg`、`Median` 接收一个取出数值的函数，空集合返回 `0`，不返回 error。`Map` 的返回元素类型由函数返回值决定，可以和原元素不同。
 
 更多 API 说明见 pkg 文档：
-- [`github.com/ZHOUXING1997/collection/slice_collcection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection/slice_collcection)
+- [`github.com/ZHOUXING1997/collection/slice_collection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection/slice_collection)

@@ -2,7 +2,7 @@
 
 本库提供两类集合，模块要求 Go 1.27。
 
-- 切片集合：`collection.NewSliceCollect`，实现在 `slice_collcection`
+- 切片集合：`collection.NewSliceCollect`，实现在 `slice_collection`
 - Map 集合：`collection.NewMapCollect`，实现在 `map_collection`
 
 取值、排序键和数值聚合都由调用方传入函数完成，库本身不按字段名反射。
@@ -15,7 +15,7 @@ c := collection.NewSliceCollect([]int{3, 1, 2})
 
 ### 比较
 
-`int`、`uint`（含各宽度）、`float32`、`float64`、`string` 调用无参方法。比较函数在第一次调用时生成，并缓存在当前集合上。
+`int`、`uint`（含各宽度）、`float32`、`float64`、`string` 调用无参方法。比较函数在调用时按元素类型生成，不保存在集合上。
 
 结构体和 `type MyInt int` 这类定义类型必须使用 `By` 方法，传入 `func(a, b T) int`：
 
@@ -54,9 +54,17 @@ oldest, err := users.MaxBy(func(a, b User) int {
 })
 ```
 
+### 是否修改原集合
+
+增删改和重新排序直接修改当前集合：`Append`、`Push`、`Pop`、`Remove`、`Insert`、`Prepend`、`SetIndex`、`FromJson`，以及 `Sort`、`SortDesc`、`SortBy`、`SortByDesc`、`SortByFunc`、`Reverse`、`Shuffle`。要保留原内容时，先 `Copy` 再调用。
+
+查询和转换返回新集合。`Slice`、`ForPage`、`Split` 复制元素，之后对结果 `Push` 或 `SetIndex` 不会改到原集合。
+
+`NewSliceCollect` 不复制传入的切片，`Values` 返回内部切片。集合和调用方共用底层数组；容量足够时，上面的增删改会写到最初传入的切片。
+
 ### 排序
 
-`Sort`、`SortDesc`、`SortBy`、`SortByDesc`、`SortByFunc` 都是稳定排序，并直接修改当前集合。连续调用时，后一次是主键；前一次的顺序只在本次比较结果为 0 时保留。
+`Sort`、`SortDesc`、`SortBy`、`SortByDesc`、`SortByFunc`、`Reverse`、`Shuffle` 都直接修改当前集合。排序是稳定的。连续调用时，后一次是主键；前一次的顺序只在本次比较结果为 0 时保留。
 
 先按 `ID` 倒序，再按 `Age` 正序：
 
@@ -79,7 +87,7 @@ avg := users.Avg(func(u User) int { return u.Age })
 median := users.Median(func(u User) int { return u.Age })
 ```
 
-`PluckField` 返回新集合，元素类型由函数决定。`Sum`、`Avg`、`Median` 只接受预声明整数或浮点数，空集合返回 `0`，不返回 error。`Median` 不修改原集合；偶数个元素时取中间两个的平均值。
+`PluckField` 返回新集合，元素类型由函数决定。`Sum`、`Avg`、`Median` 接受底层类型为整数或浮点数的值，因此 `type Money int64` 可以直接传入。空集合返回 `0`，不返回 error。`Median` 不修改原集合；偶数个元素时取中间两个的平均值。
 
 `Map` 和 `MapFilter` 的结果类型也由函数决定，可以和原元素不同。`MapFilter` 在函数返回 `false` 时丢弃该元素。`GroupBy` 的 key 必须可比较。
 
@@ -105,7 +113,9 @@ labels := mc.Map(func(v int, k string) string { return k })
 sum := mc.Reduce(0, func(acc int, v int, k string) int { return acc + v })
 ```
 
-`Map` 保留 key 的比较函数和已排序的 key，不保留 value 的比较函数。`Reduce` 的累加类型由初始值和函数决定。
+`Map` 保留 key 的比较函数和已排序的 key，不保留 value 的比较函数。`Reduce` 的累加类型由初始值和函数决定。`SafeCollection.Reduce` 同样是泛型方法。
+
+`All` 返回底层 map 的引用，修改会影响集合。`SafeCollection.All` 返回副本，修改返回值不会影响集合。
 
 ## 错误
 

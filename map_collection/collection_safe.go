@@ -200,8 +200,8 @@ func (sc *SafeCollection[K, V]) Each(fn func(V, K)) {
 	sc.coll.Each(fn)
 }
 
-// Reduce 聚合操作
-func (sc *SafeCollection[K, V]) Reduce(init any, fn func(any, V, K) any) any {
+// Reduce 将 map 折叠为一个结果。R 由 init 和 fn 决定。
+func (sc *SafeCollection[K, V]) Reduce[R any](init R, fn func(R, V, K) R) R {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 
@@ -224,12 +224,12 @@ func (sc *SafeCollection[K, V]) Last() (K, V, bool) {
 	return sc.coll.Last()
 }
 
-// All 返回底层 map 的副本
+// All 返回底层 map 的副本。修改返回值不会影响 Collection。
 func (sc *SafeCollection[K, V]) All() map[K]V {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 
-	return sc.coll.All()
+	return Clone(sc.coll.All())
 }
 
 // ToJSON 序列化为 JSON 字符串

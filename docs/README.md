@@ -2,7 +2,7 @@
 
 - 包概览（pkg.go.dev）：
   - 入口包：[`github.com/ZHOUXING1997/collection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection)
-  - 切片集合：[`github.com/ZHOUXING1997/collection/slice_collcection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection/slice_collcection)
+  - 切片集合：[`github.com/ZHOUXING1997/collection/slice_collection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection/slice_collection)
   - Map 集合：[`github.com/ZHOUXING1997/collection/map_collection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection/map_collection)
 
 - 指南：

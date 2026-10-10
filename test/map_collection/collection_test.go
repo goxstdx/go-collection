@@ -536,7 +536,7 @@ type Person struct {
 	Age  int
 }
 
-func TestPluck(t *testing.T) {
+func TestPluckFieldString(t *testing.T) {
 	m := map[string]Person{
 		"p1": {Name: "Alice", Age: 30},
 		"p2": {Name: "Bob", Age: 25},
@@ -546,7 +546,7 @@ func TestPluck(t *testing.T) {
 
 	names := c.PluckField(func(p Person) string { return p.Name })
 	if len(names) != 3 {
-		t.Errorf("Pluck returned wrong number of items: %d", len(names))
+		t.Errorf("PluckField returned wrong number of items: %d", len(names))
 	}
 
 	// 验证是否包含所有名字
@@ -556,11 +556,11 @@ func TestPluck(t *testing.T) {
 	}
 
 	if !nameMap["Alice"] || !nameMap["Bob"] || !nameMap["Charlie"] {
-		t.Error("Pluck did not extract all names correctly")
+		t.Error("PluckField did not extract all names correctly")
 	}
 }
 
-func TestPluckFunc(t *testing.T) {
+func TestPluckFieldInt(t *testing.T) {
 	m := map[string]Person{
 		"p1": {Name: "Alice", Age: 30},
 		"p2": {Name: "Bob", Age: 25},
@@ -581,7 +581,7 @@ func TestPluckFunc(t *testing.T) {
 	}
 
 	if !ageMap[30] || !ageMap[25] || !ageMap[35] {
-		t.Error("PluckFunc did not extract all ages correctly")
+		t.Error("PluckField did not extract all ages correctly")
 	}
 }
 
@@ -929,7 +929,7 @@ func TestSingleElementDeleteToEmpty(t *testing.T) {
 }
 
 // 测试 Pluck 在空集合上
-func TestPluckOnEmptyCollection(t *testing.T) {
+func TestPluckFieldStringOnEmpty(t *testing.T) {
 	c := map_collection.NewCollection(map[string]Person{})
 
 	names := c.PluckField(func(p Person) string { return p.Name })
@@ -938,12 +938,12 @@ func TestPluckOnEmptyCollection(t *testing.T) {
 	}
 }
 
-// 测试 PluckFunc 在空集合上
-func TestPluckFuncOnEmptyCollection(t *testing.T) {
+// 测试 PluckField 在空集合上取出整数。
+func TestPluckFieldIntOnEmpty(t *testing.T) {
 	c := map_collection.NewCollection(map[string]Person{})
 
 	ages := c.PluckField(func(p Person) int { return p.Age })
 	if len(ages) != 0 {
-		t.Errorf("PluckFunc on empty collection should return empty slice, got %d items", len(ages))
+		t.Errorf("PluckField on empty collection should return empty slice, got %d items", len(ages))
 	}
 }

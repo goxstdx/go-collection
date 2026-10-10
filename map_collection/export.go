@@ -38,16 +38,15 @@ func WithValCompare[K comparable, V any](compareFunc func(V, V) int) CollectionO
 // 支持函数式选项模式配置比较函数
 func NewCollection[T ~map[K]V, K comparable, V any](values T, opts ...CollectionOption[K, V]) *Collection[K, V] {
 	coll := &Collection[K, V]{
-		value:          values,
-		valCompareFunc: nil,
-		keyCompareFunc: nil,
-		sortedKeys:     Keys(values),
+		value: values,
 	}
 
-	// 应用选项
+	// 比较函数在选项里设置，排好序后再把集合交给调用方。
+	// First、Last 只读 sortedKeys，避免在 SafeCollection 的读锁里写入。
 	for _, opt := range opts {
 		opt(coll)
 	}
+	coll.initSortedKeys()
 
 	return coll
 }

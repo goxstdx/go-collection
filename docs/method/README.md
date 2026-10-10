@@ -1,6 +1,6 @@
 # 方法手册说明（slice 集合）
 
-本目录文档默认针对切片集合（包：`slice_collcection`），示例基于泛型 API：
+本目录文档默认针对切片集合（包：`slice_collection`），示例基于泛型 API：
 - 初始化：`collection.NewSliceCollect([]T{...})`
 - 常用：`Filter`、`Map`、`MapFilter`、`Sum`、`Avg`、`Contains`、`Sort` 等
 - `int`、`uint`、`float`、`string` 的比较在调用 `Sort`、`Max`、`Contains` 等无参方法时生成
