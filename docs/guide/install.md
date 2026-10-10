@@ -4,7 +4,7 @@
 - 切片集合（包：`slice_collcection`，入口函数：`collection.NewSliceCollect` 等）
 - Map 集合（包：`map_collection`，入口函数：`collection.NewMapCollect` 等）
 
-推荐使用 Go Modules：
+推荐使用 Go Modules，模块要求 Go 1.27：
 
 ```bash
 go get github.com/ZHOUXING1997/collection@latest
@@ -29,7 +29,7 @@ import (
 func main() {
     // 切片集合（slice_collcection）
     c := collection.NewSliceCollect([]int{1, 2, 3})
-    sum, _ := c.Sum()
+    sum := c.Sum(func(n int) int { return n })
     fmt.Println(sum)
 
     // Map 集合（map_collection）

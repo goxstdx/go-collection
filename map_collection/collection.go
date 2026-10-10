@@ -241,17 +241,18 @@ func (c *Collection[K, V]) Foreach(fn func(value V, key K)) *Collection[K, V] {
 	return c
 }
 
-// TODO 后续看看怎么，现在没办法返回新的 Collection
-// // Map 对 value 进行映射转换，返回新的 Collection
-// // 注意：此方法会改变 value 的类型，因此返回的是 map[K]R 而不是 Collection
-// func (c *Collection[K, V]) Map(fn func(value V, key K) V) *Collection[K, V] {
-// 	newMap := MapValues(c.value, fn)
-//
-// 	return NewCollection(newMap)
-// }
+// Map 对 value 做映射。R 由 fn 的返回值决定，可以与 V 不同。
+// key 的比较函数和已排序的 key 会保留；value 的比较函数不会带过去。
+func (c *Collection[K, V]) Map[R any](fn func(value V, key K) R) *Collection[K, R] {
+	return &Collection[K, R]{
+		value:          MapValues(c.value, fn),
+		keyCompareFunc: c.keyCompareFunc,
+		sortedKeys:     slices.Clone(c.sortedKeys),
+	}
+}
 
-// Reduce 聚合：将 map 折叠为一个结果
-func (c *Collection[K, V]) Reduce(init any, fn func(acc any, value V, key K) any) any {
+// Reduce 将 map 折叠为一个结果。
+func (c *Collection[K, V]) Reduce[R any](init R, fn func(acc R, value V, key K) R) R {
 	return Reduce(c.value, init, fn)
 }
 
@@ -338,52 +339,21 @@ func (c *Collection[K, V]) DD() *Collection[K, V] {
 	return c
 }
 
-// Pluck 从所有 value 中提取指定字段，返回类型安全的切片
-// 适用于 V 是结构体或结构体指针的场景
-// fieldName: 字段名
-// R: 字段类型（需要与实际字段类型匹配）
-// 注意：此方法返回的切片顺序取决于是否有 sortedKeys
-func (c *Collection[K, V]) Pluck(fieldName string) []any {
-	result := make([]any, 0, len(c.value))
-
-	// 使用 sortedKeys 保持顺序（如果存在）
+// PluckField 用 fn 从每个 value 取出一个值。
+// 已有 sortedKeys 时按该顺序返回，否则按 map 的遍历顺序。
+func (c *Collection[K, V]) PluckField[R any](fn func(V) R) []R {
+	result := make([]R, 0, len(c.value))
 	if c.sortedKeys != nil {
 		for _, k := range c.sortedKeys {
 			if v, ok := c.value[k]; ok {
-				if extracted := extractField(v, fieldName); extracted != nil {
-					result = append(result, extracted)
-				}
+				result = append(result, fn(v))
 			}
 		}
-	} else {
-		// 无序遍历
-		for _, v := range c.value {
-			if extracted := extractField(v, fieldName); extracted != nil {
-				result = append(result, extracted)
-			}
-		}
+		return result
 	}
 
-	return result
-}
-
-// PluckFunc 从所有 value 中提取指定内容，返回切片
-// extractFunc: 用户自定义提取函数
-func (c *Collection[K, V]) PluckFunc(extractFunc func(V) any) []any {
-	result := make([]any, 0, len(c.value))
-
-	// 使用 sortedKeys 保持顺序（如果存在）
-	if c.sortedKeys != nil {
-		for _, k := range c.sortedKeys {
-			if v, ok := c.value[k]; ok {
-				result = append(result, extractFunc(v))
-			}
-		}
-	} else {
-		// 无序遍历
-		for _, v := range c.value {
-			result = append(result, extractFunc(v))
-		}
+	for _, v := range c.value {
+		result = append(result, fn(v))
 	}
 
 	return result

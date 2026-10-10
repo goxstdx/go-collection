@@ -2,3 +2,8 @@
 .idea/
 /.junie/
 /.cunzhi-memory/
+
+**/.DS_Store
+
+go.work
+go.work.sum

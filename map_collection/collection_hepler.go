@@ -64,8 +64,6 @@ func (c *Collection[K, V]) removeKeyFromSorted(keys ...K) {
 func (c *Collection[K, V]) cloneWithSortedKeys(newMap map[K]V) *Collection[K, V] {
 	newColl := &Collection[K, V]{
 		value:          newMap,
-		vType:          c.vType,
-		kType:          c.kType,
 		valCompareFunc: c.valCompareFunc,
 		keyCompareFunc: c.keyCompareFunc,
 	}

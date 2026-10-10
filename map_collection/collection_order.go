@@ -68,10 +68,10 @@ func (c *Collection[K, V]) OrderValue() (*Collection[K, V], error) {
 	return c, nil
 }
 
-// OrderByValueFunc 按 value 的提取函数结果排序（通用方案）
-// extractFunc: 从 value 中提取可比较的值
-// compareFunc: 比较函数，-1：小于，0：等于，1：大于Å
-func (c *Collection[K, V]) OrderByValueFunc(extractFunc func(V) any, compareFunc func(any, any) int) (*Collection[K, V], error) {
+// OrderByValueFunc 按 value 的提取结果排序。
+// extractFunc: 从 value 中提取用于比较的值
+// compareFunc: 比较函数，-1：小于，0：等于，1：大于
+func (c *Collection[K, V]) OrderByValueFunc[R any](extractFunc func(V) R, compareFunc func(R, R) int) (*Collection[K, V], error) {
 	if extractFunc == nil || compareFunc == nil {
 		return c, errorx.NilFunc
 	}

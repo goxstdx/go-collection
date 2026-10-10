@@ -25,16 +25,25 @@ mc.SetValCompare(func(a, b int) int {
 }).OrderValue()
 ```
 ## 常用操作
-- 提取：`Keys`、`Values`、`Pluck`、`PluckFunc`
+- 提取：`Keys`、`Values`、`PluckField`
 - 修改：`Set`（就地）、`Put`（返回新集合）、`Merge`/`MergeInPlace`
 - 过滤：`Filter`、`Only`、`Except`
 - 定位与聚合：`First`、`Last`、`FirstWhere`、`LastWhere`、`Reduce`
 - 序列化：`ToJSON`
+
+`PluckField` 用函数从 value 取值，不再按字段名反射。集合上已有排序键时按该顺序返回。包级 `map_collection.Pluck` 同样接收取值函数，遍历顺序不稳定。
+
+`Map`、`Reduce` 的结果类型由函数返回值决定，可以和原 value 不同。
+
 ```go
 k, v, ok := mc.First()
 jsonStr, _ := mc.ToJSON()
+values := mc.PluckField(func(n int) int { return n })
+_ = k
+_ = v
+_ = ok
+_ = jsonStr
+_ = values
 ```
 更多 API 说明见 pkg 文档：
 - [`github.com/ZHOUXING1997/collection/map_collection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection/map_collection)
-
-

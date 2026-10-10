@@ -5,43 +5,30 @@
 package slice_collcection
 
 import (
+	"cmp"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/rand"
-	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/ZHOUXING1997/collection/errorx"
-	"github.com/ZHOUXING1997/collection/utils"
 )
 
-// 是结构体或者指针
-func (c *Collection[T]) isStructOrPointer() bool {
-	switch c.typ.Kind() {
-	case reflect.Struct:
-		return true
-	case reflect.Pointer:
-		if c.typ.Elem().Kind() == reflect.Struct {
-			return true
-		}
-	default:
-		return false
+// basicOrderedCmp 返回预声明有序类型的比较函数，并缓存在集合上。
+// 结构体等非基础类型返回 NoComparableError，调用方必须使用 By 方法。
+func (c *Collection[T]) basicOrderedCmp() (func(T, T) int, error) {
+	if c.orderedCmp != nil {
+		return c.orderedCmp, nil
 	}
-
-	return false
-}
-
-// 是可比较的
-func (c *Collection[T]) isComparable() bool {
-	return c.compareFunc != nil
-}
-
-// 是可以进行计算的
-func (c *Collection[T]) isComputable() bool {
-	return utils.IsComputableKind(c.typ.Kind())
+	fn := defaultCompare[T]()
+	if fn == nil {
+		return nil, errorx.NoComparableError
+	}
+	c.orderedCmp = fn
+	return fn, nil
 }
 
 // // Err 返回Collection的错误信息
@@ -55,22 +42,12 @@ func (c *Collection[T]) isComputable() bool {
 // 	return c
 // }
 
-// SetCompare 设置比较函数
-// -1：小于，0：等于，1：大于
-func (c *Collection[T]) SetCompare(compareFunc func(a any, b any) int) *Collection[T] {
-	c.compareFunc = compareFunc
-	return c
-}
-
 // Copy 复制一个新的Collection
 func (c *Collection[T]) Copy() *Collection[T] {
 	// 深拷贝切片,避免共享底层数组
 	copied := make([]T, len(c.value))
 	copy(copied, c.value)
-	coll := NewCollection[T](copied)
-	// 保留原始的 compareFunc
-	coll.compareFunc = c.compareFunc
-	return coll
+	return NewCollection[T](copied)
 }
 
 // IsEmpty 判断是否为空
@@ -110,57 +87,67 @@ func (c *Collection[T]) Insert(index int, item T) *Collection[T] {
 	arr = append(arr, item)
 	arr = append(arr, c.value[index:]...)
 	newColl := NewCollection[T](arr)
-	// 保留原始的 compareFunc
-	newColl.compareFunc = c.compareFunc
 	return newColl
 }
 
-// Search 查找元素
+// Search 在预声明有序类型中查找元素，返回首次出现的下标。
 func (c *Collection[T]) Search(item T) (int, error) {
-	if !c.isComparable() {
-		return -1, errorx.ElementNoComputableError
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		return -1, err
 	}
+	return c.searchWith(item, cmpFn)
+}
 
+// SearchBy 用 cmpFn 查找元素。cmpFn 返回 0 表示相等。
+func (c *Collection[T]) SearchBy(item T, cmpFn func(a, b T) int) (int, error) {
+	if cmpFn == nil {
+		return -1, errorx.NilFunc
+	}
+	return c.searchWith(item, cmpFn)
+}
+
+func (c *Collection[T]) searchWith(item T, cmpFn func(a, b T) int) (int, error) {
 	for i, v := range c.value {
-		if c.compareFunc(v, item) == 0 {
+		if cmpFn(v, item) == 0 {
 			return i, nil
 		}
 	}
-
 	return -1, errorx.NotFoundError
 }
 
-// Unique 去重
+// Unique 对预声明有序类型去重，保留首次出现的元素。
 func (c *Collection[T]) Unique() (*Collection[T], error) {
-	if !c.isComparable() {
-		return c, errorx.ElementNoComputableError
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		return nil, err
 	}
+	return c.uniqueWith(cmpFn), nil
+}
 
-	if c.IsEmpty() {
-		return NewCollection[T]([]T{}), nil
+// UniqueBy 用 cmpFn 去重。cmpFn 返回 0 表示相等。保留首次出现的元素。
+func (c *Collection[T]) UniqueBy(cmpFn func(a, b T) int) (*Collection[T], error) {
+	if cmpFn == nil {
+		return nil, errorx.NilFunc
 	}
+	return c.uniqueWith(cmpFn), nil
+}
 
-	// 使用 map 优化去重算法,从 O(n²) 降为 O(n)
-	// 由于泛型类型 T 可能不可比较,使用索引作为 map 的值
+func (c *Collection[T]) uniqueWith(cmpFn func(a, b T) int) *Collection[T] {
 	res := make([]T, 0, len(c.value))
-	seen := make(map[int]bool) // 存储已见过的元素索引
-
-	for i, v := range c.value {
+	for _, v := range c.value {
 		found := false
-		// 只需要与已添加的元素比较
-		for idx := range seen {
-			if c.compareFunc(c.value[idx], v) == 0 {
+		for _, existed := range res {
+			if cmpFn(existed, v) == 0 {
 				found = true
 				break
 			}
 		}
 		if !found {
-			seen[i] = true
 			res = append(res, v)
 		}
 	}
-
-	return NewCollection[T](res), nil
+	return NewCollection(res)
 }
 
 // Filter 过滤
@@ -295,20 +282,19 @@ func (c *Collection[T]) Foreach(f func(item T, key int)) {
 	}
 }
 
-// Map 映射
-func (c *Collection[T]) Map(f func(item T, key int) T) *Collection[T] {
-	res := make([]T, 0, len(c.value))
+// Map 映射。R 由 f 的返回值决定，可以与 T 不同。
+func (c *Collection[T]) Map[R any](f func(item T, key int) R) *Collection[R] {
+	res := make([]R, 0, len(c.value))
 	for i, v := range c.value {
 		res = append(res, f(v, i))
 	}
 
-	return NewCollection[T](res)
+	return NewCollection(res)
 }
 
-// Map 映射并过滤
-// 映射后，可以过滤掉一些元素
-func (c *Collection[T]) MapFilter(f func(item T, key int) (T, bool)) *Collection[T] {
-	res := make([]T, 0, len(c.value))
+// MapFilter 映射并过滤。f 返回 false 的元素会被丢弃。
+func (c *Collection[T]) MapFilter[R any](f func(item T, key int) (R, bool)) *Collection[R] {
+	res := make([]R, 0, len(c.value))
 	for i, v := range c.value {
 		r, ok := f(v, i)
 		if ok {
@@ -316,7 +302,7 @@ func (c *Collection[T]) MapFilter(f func(item T, key int) (T, bool)) *Collection
 		}
 	}
 
-	return NewCollection[T](res)
+	return NewCollection(res)
 }
 
 // Reduce 求和
@@ -446,9 +432,9 @@ func (c *Collection[T]) Shuffle() *Collection[T] {
 	return NewCollection(res)
 }
 
-// GroupBy 分组
-func (c *Collection[T]) GroupBy(f func(T, int) interface{}) map[interface{}]*Collection[T] {
-	res := make(map[interface{}]*Collection[T])
+// GroupBy 按 f 的返回值分组。K 必须可比较。
+func (c *Collection[T]) GroupBy[K comparable](f func(T, int) K) map[K]*Collection[T] {
+	res := make(map[K]*Collection[T])
 	for i, v := range c.value {
 		key := f(v, i)
 		if _, ok := res[key]; !ok {
@@ -479,7 +465,8 @@ func (c *Collection[T]) Split(size int) []*Collection[T] {
 
 // DD 打印出当前数组结构
 func (c *Collection[T]) DD() {
-	ret := fmt.Sprintf("Collection(%d, %s):{\n", c.Count(), c.typ.String())
+	var zero T
+	ret := fmt.Sprintf("Collection(%d, %T):{\n", c.Count(), zero)
 	for k, v := range c.value {
 		ret = ret + fmt.Sprintf("\t%d:\t%v\n", k, v)
 	}
@@ -487,440 +474,225 @@ func (c *Collection[T]) DD() {
 	fmt.Print(ret)
 }
 
-// PluckString 按照某个字段进行筛选
-func (c *Collection[T]) PluckString(key string) (*Collection[string], error) {
-	res := make([]string, 0, len(c.value))
-	if c.typ.Kind() != reflect.Struct && c.typ.Kind() != reflect.Pointer {
-		return nil, errors.New("invalid collection")
-	}
-
+// PluckField 用 fn 从每个元素取出一个值，返回新集合。
+func (c *Collection[T]) PluckField[R any](fn func(T) R) *Collection[R] {
+	res := make([]R, 0, len(c.value))
 	for _, v := range c.value {
-		var val reflect.Value
-		if c.typ.Kind() == reflect.Ptr {
-			val = reflect.ValueOf(v).Elem().FieldByName(key)
-		} else if c.typ.Kind() == reflect.Struct {
-			val = reflect.ValueOf(v).FieldByName(key)
-		}
-		kind := val.Type().Kind()
-		if kind != reflect.String {
-			return nil, errorx.InvalidTypeError
-		}
-
-		res = append(res, val.String())
+		res = append(res, fn(v))
 	}
 
-	return NewCollection(res), nil
+	return NewCollection(res)
 }
 
-// PluckInt64 按照某个字段进行筛选
-func (c *Collection[T]) PluckInt64(key string) (*Collection[int64], error) {
-	res := make([]int64, 0, len(c.value))
-	for _, v := range c.value {
-		var val reflect.Value
-		if c.typ.Kind() == reflect.Ptr {
-			val = reflect.ValueOf(v).Elem().FieldByName(key)
-		} else if c.typ.Kind() == reflect.Struct {
-			val = reflect.ValueOf(v).FieldByName(key)
-		}
-		if !val.CanInt() {
-			// c.SetErr(InvalidTypeError)
-			// return nil
-
-			return nil, errorx.InvalidTypeError
-		}
-
-		res = append(res, val.Int())
-	}
-
-	return NewCollection(res), nil
-}
-
-// PluckFloat64 按照某个字段进行筛选
-func (c *Collection[T]) PluckFloat64(key string) (*Collection[float64], error) {
-	res := make([]float64, 0, len(c.value))
-	for _, v := range c.value {
-		var val reflect.Value
-		if c.typ.Kind() == reflect.Ptr {
-			val = reflect.ValueOf(v).Elem().FieldByName(key)
-		} else if c.typ.Kind() == reflect.Struct {
-			val = reflect.ValueOf(v).FieldByName(key)
-		}
-		if !val.CanFloat() {
-			return nil, errorx.InvalidTypeError
-		}
-
-		res = append(res, val.Float())
-	}
-
-	return NewCollection(res), nil
-}
-
-// PluckUint64 按照某个字段进行筛选
-func (c *Collection[T]) PluckUint64(key string) (*Collection[uint64], error) {
-	res := make([]uint64, 0, len(c.value))
-	for _, v := range c.value {
-		var val reflect.Value
-		if c.typ.Kind() == reflect.Ptr {
-			val = reflect.ValueOf(v).Elem().FieldByName(key)
-		} else if c.typ.Kind() == reflect.Struct {
-			val = reflect.ValueOf(v).FieldByName(key)
-		}
-		if !val.CanUint() {
-			return nil, errorx.InvalidTypeError
-		}
-
-		res = append(res, val.Uint())
-	}
-
-	return NewCollection(res), nil
-}
-
-// PluckBool 按照某个字段进行筛选
-func (c *Collection[T]) PluckBool(key string) (*Collection[bool], error) {
-	res := make([]bool, 0, len(c.value))
-	for _, v := range c.value {
-		var val reflect.Value
-		if c.typ.Kind() == reflect.Ptr {
-			val = reflect.ValueOf(v).Elem().FieldByName(key)
-		} else if c.typ.Kind() == reflect.Struct {
-			val = reflect.ValueOf(v).FieldByName(key)
-		}
-		if val.Kind() != reflect.Bool {
-			// c.SetErr(InvalidTypeError)
-			// return nil
-
-			return nil, errorx.InvalidTypeError
-		}
-
-		res = append(res, val.Bool())
-	}
-
-	return NewCollection(res), nil
-}
-
-// SortBy 按照某个字段进行排序
-func (c *Collection[T]) SortBy(key string) (*Collection[T], error) {
-	if c.IsEmpty() || !c.isStructOrPointer() {
-		return c, errors.New("collection `T` must be a struct or pointer to struct")
-	}
-
-	// 预先检查字段类型
-	baseType := reflect.TypeOf(c.value[0])
-	isPointer := baseType.Kind() == reflect.Pointer
-
-	// 获取实际的结构体类型
-	if isPointer {
-		baseType = baseType.Elem()
-	}
-
-	// 检查字段是否存在和类型是否可比较
-	field, exists := baseType.FieldByName(key)
-	if !exists {
-		return c, fmt.Errorf("field %s does not exist", key)
-	}
-
-	// 使用闭包避免重复反射操作
-	lessFunc := utils.NewCompareFunc(field.Type.Kind())
-	if lessFunc == nil {
-		return c, errorx.KeyUnComparableError
-	}
-
-	sort.Slice(c.value, func(i, j int) bool {
-		var val1, val2 reflect.Value
-		// 处理指针类型
-		if isPointer {
-			val1 = reflect.ValueOf(c.value[i]).Elem().FieldByName(key)
-			val2 = reflect.ValueOf(c.value[j]).Elem().FieldByName(key)
-		} else {
-			val1 = reflect.ValueOf(c.value[i]).FieldByName(key)
-			val2 = reflect.ValueOf(c.value[j]).FieldByName(key)
-		}
-		r := lessFunc(val1.Interface(), val2.Interface())
-
-		return r < 0
+// SortBy 按 fn 提取的值升序排列，直接修改当前集合。
+// 使用稳定排序：本次比较相等的元素保持排序前的相对顺序，因此可以先排次要字段，再排主要字段。
+func (c *Collection[T]) SortBy[R cmp.Ordered](fn func(T) R) *Collection[T] {
+	slices.SortStableFunc(c.value, func(a, b T) int {
+		return cmp.Compare(fn(a), fn(b))
 	})
 
-	return c, nil
+	return c
 }
 
-// SortBy 按照某个字段转换为float进行排序，且字段必须为 string、int、float
-// 如果转换为float失败后，会视为没满足条件
-func (c *Collection[T]) SortFloatBy(key string) (*Collection[T], error) {
-	if c.IsEmpty() || !c.isStructOrPointer() {
-		return c, errors.New("collection `T` must be a struct or pointer to struct")
-	}
-
-	// 预先检查字段类型
-	baseType := reflect.TypeOf(c.value[0])
-	isPointer := baseType.Kind() == reflect.Pointer
-
-	// 获取实际的结构体类型
-	if isPointer {
-		baseType = baseType.Elem()
-	}
-
-	// 检查字段是否存在和类型是否可比较
-	field, exists := baseType.FieldByName(key)
-	if !exists {
-		return c, fmt.Errorf("field %s does not exist", key)
-	}
-
-	if !utils.IsComputableKind(field.Type.Kind()) && field.Type.Kind() != reflect.String {
-		return c, fmt.Errorf("field %s is not computable", key)
-	}
-
-	// 使用闭包避免重复反射操作
-	lessFunc := utils.NewCompareFunc(reflect.Float64)
-	if lessFunc == nil {
-		return c, errorx.KeyUnComparableError
-	}
-
-	var err error
-	sort.Slice(c.value, func(i, j int) bool {
-		var val1, val2 reflect.Value
-		// 处理指针类型
-		if isPointer {
-			val1 = reflect.ValueOf(c.value[i]).Elem().FieldByName(key)
-			val2 = reflect.ValueOf(c.value[j]).Elem().FieldByName(key)
-		} else {
-			val1 = reflect.ValueOf(c.value[i]).FieldByName(key)
-			val2 = reflect.ValueOf(c.value[j]).FieldByName(key)
-		}
-
-		var v1f, v2f float64
-		v1f, err = utils.Any2Float(val1.Interface())
-		if err != nil {
-			return false
-		}
-
-		v2f, err = utils.Any2Float(val2.Interface())
-		if err != nil {
-			return false
-		}
-
-		return lessFunc(v1f, v2f) < 0
-	})
-
-	return c, nil
-}
-
-// SortBy 按照某个字段进行排序
+// SortByFunc 按自定义比较函数排序，直接修改当前集合。fn 返回 true 表示 v1 应排在 v2 前面。
+// 使用稳定排序，比较结果相等时保留原相对顺序。
 func (c *Collection[T]) SortByFunc(fn func(v1, v2 T) bool) (*Collection[T], error) {
-	sort.Slice(c.value, func(i, j int) bool {
+	sort.SliceStable(c.value, func(i, j int) bool {
 		return fn(c.value[i], c.value[j])
 	})
 
 	return c, nil
 }
 
-// SortByDesc 按照某个字段进行排序,倒序
-func (c *Collection[T]) SortByDesc(key string) (*Collection[T], error) {
-	if c.IsEmpty() || !c.isStructOrPointer() {
-		return c, errors.New("collection `T` must be a struct or pointer to struct")
-	}
-
-	// 预先检查字段类型
-	baseType := reflect.TypeOf(c.value[0])
-	isPointer := baseType.Kind() == reflect.Pointer
-
-	// 获取实际的结构体类型
-	if isPointer {
-		baseType = baseType.Elem()
-	}
-
-	// 检查字段是否存在和类型是否可比较
-	field, exists := baseType.FieldByName(key)
-	if !exists {
-		return c, fmt.Errorf("field %s does not exist", key)
-	}
-
-	// 使用闭包避免重复反射操作
-	lessFunc := utils.NewCompareFunc(field.Type.Kind())
-	if lessFunc == nil {
-		return c, errorx.KeyUnComparableError
-	}
-
-	sort.Slice(c.value, func(i, j int) bool {
-		var val1, val2 reflect.Value
-		// 处理指针类型
-		if isPointer {
-			val1 = reflect.ValueOf(c.value[i]).Elem().FieldByName(key)
-			val2 = reflect.ValueOf(c.value[j]).Elem().FieldByName(key)
-		} else {
-			val1 = reflect.ValueOf(c.value[i]).FieldByName(key)
-			val2 = reflect.ValueOf(c.value[j]).FieldByName(key)
-		}
-		r := lessFunc(val1.Interface(), val2.Interface())
-
-		return r > 0
+// SortByDesc 按 fn 提取的值降序排列，直接修改当前集合。
+// 使用稳定排序：本次比较相等的元素保持排序前的相对顺序。
+func (c *Collection[T]) SortByDesc[R cmp.Ordered](fn func(T) R) *Collection[T] {
+	slices.SortStableFunc(c.value, func(a, b T) int {
+		return cmp.Compare(fn(b), fn(a))
 	})
 
-	return c, nil
+	return c
 }
 
-// KeyByStrField 根据某个字段为key，返回一个map,要求key对应的field是string
-func (c *Collection[T]) KeyByStrField(key string) (map[string]T, error) {
-	res := make(map[string]T)
+// KeyBy 用 fn 的返回值作为 key。相同 key 时，后者覆盖前者。
+func (c *Collection[T]) KeyBy[K comparable](fn func(T) K) map[K]T {
+	res := make(map[K]T, len(c.value))
 	for _, v := range c.value {
-		val := reflect.ValueOf(v).FieldByName(key)
-		if val.IsValid() && val.CanInterface() {
-			if str, ok := val.Interface().(string); ok {
-				res[str] = v
-			} else {
-				return nil, fmt.Errorf("key is not string")
-			}
-		}
+		res[fn(v)] = v
 	}
 
-	return res, nil
+	return res
 }
 
-// Max 数组中最大的元素，仅对基础Collection生效, 可以传递一个比较函数
+// Max 返回预声明有序类型中的最大元素。空集合返回 EmptyError，不把零值当作结果。
 func (c *Collection[T]) Max() (T, error) {
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return c.maxWith(cmpFn)
+}
+
+// MaxBy 用 cmpFn 取最大元素。cmpFn 返回正数表示 a 大于 b。
+func (c *Collection[T]) MaxBy(cmpFn func(a, b T) int) (T, error) {
+	if cmpFn == nil {
+		var zero T
+		return zero, errorx.NilFunc
+	}
+	return c.maxWith(cmpFn)
+}
+
+func (c *Collection[T]) maxWith(cmpFn func(a, b T) int) (T, error) {
 	var zero T
-
-	if !c.isComparable() {
-		// c.SetErr(errors.New("collection is not comparable"))
-		// return zero
-
-		return zero, errorx.NoComparableError
-	}
-
 	if c.IsEmpty() {
-		return zero, nil
+		return zero, errorx.EmptyError
 	}
-
 	maxElem := c.value[0]
-	for _, v := range c.value {
-		if c.compareFunc(v, maxElem) > 0 {
+	for _, v := range c.value[1:] {
+		if cmpFn(v, maxElem) > 0 {
 			maxElem = v
 		}
 	}
-
 	return maxElem, nil
 }
 
-// Min 数组中最小的元素，仅对基础Collection生效
+// Min 返回预声明有序类型中的最小元素。空集合返回 EmptyError，不把零值当作结果。
 func (c *Collection[T]) Min() (T, error) {
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return c.minWith(cmpFn)
+}
+
+// MinBy 用 cmpFn 取最小元素。cmpFn 返回负数表示 a 小于 b。
+func (c *Collection[T]) MinBy(cmpFn func(a, b T) int) (T, error) {
+	if cmpFn == nil {
+		var zero T
+		return zero, errorx.NilFunc
+	}
+	return c.minWith(cmpFn)
+}
+
+func (c *Collection[T]) minWith(cmpFn func(a, b T) int) (T, error) {
 	var zero T
-
-	if !c.isComparable() {
-		// c.SetErr(errors.New("collection is not comparable"))
-		// return zero
-
-		return zero, errorx.NoComparableError
-	}
-
 	if c.IsEmpty() {
-		return zero, nil
+		return zero, errorx.EmptyError
 	}
-
 	minElem := c.value[0]
-	for _, v := range c.value {
-		if c.compareFunc(v, minElem) < 0 {
+	for _, v := range c.value[1:] {
+		if cmpFn(v, minElem) < 0 {
 			minElem = v
 		}
 	}
-
 	return minElem, nil
 }
 
-// Contains 判断是否包含某个元素，（并不进行定位），对基础Collection生效
+// Contains 判断预声明有序类型是否包含某个元素。
 func (c *Collection[T]) Contains(obj T) (bool, error) {
-	if !c.isComparable() {
-		// c.SetErr(errors.New("collection is not comparable"))
-		// return false
-
-		return false, errorx.NoComparableError
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		return false, err
 	}
-
-	if c.IsEmpty() {
-		return false, nil
-	}
-
-	for _, v := range c.value {
-		if c.compareFunc(v, obj) == 0 {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return c.containsWith(obj, cmpFn), nil
 }
 
-// ContainsCount 判断包含某个元素的个数，返回0代表没有找到，返回正整数代表个数。必须设置compare函数
-func (c *Collection[T]) ContainsCount(obj T) (int, error) {
-	if !c.isComparable() {
-		// c.SetErr(errors.New("collection is not comparable"))
-		// return 0
-
-		return 0, errorx.NoComparableError
+// ContainsBy 用 cmpFn 判断是否包含。cmpFn 返回 0 表示相等。
+func (c *Collection[T]) ContainsBy(obj T, cmpFn func(a, b T) int) (bool, error) {
+	if cmpFn == nil {
+		return false, errorx.NilFunc
 	}
+	return c.containsWith(obj, cmpFn), nil
+}
 
+func (c *Collection[T]) containsWith(obj T, cmpFn func(a, b T) int) bool {
+	for _, v := range c.value {
+		if cmpFn(v, obj) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsCount 返回预声明有序类型中等于 obj 的元素个数。
+func (c *Collection[T]) ContainsCount(obj T) (int, error) {
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		return 0, err
+	}
+	return c.containsCountWith(obj, cmpFn), nil
+}
+
+// ContainsCountBy 用 cmpFn 统计相等元素的个数。cmpFn 返回 0 表示相等。
+func (c *Collection[T]) ContainsCountBy(obj T, cmpFn func(a, b T) int) (int, error) {
+	if cmpFn == nil {
+		return 0, errorx.NilFunc
+	}
+	return c.containsCountWith(obj, cmpFn), nil
+}
+
+func (c *Collection[T]) containsCountWith(obj T, cmpFn func(a, b T) int) int {
 	count := 0
 	for _, v := range c.value {
-		if c.compareFunc(v, obj) == 0 {
+		if cmpFn(v, obj) == 0 {
 			count++
 		}
 	}
-
-	return count, nil
+	return count
 }
 
-// Diff 比较两个数组，获取第一个数组不在第二个数组中的元素，组成新数组
+// Diff 返回存在于当前集合、但不存在于 arr 的元素。仅适用于预声明有序类型。
 func (c *Collection[T]) Diff(arr *Collection[T]) (*Collection[T], error) {
-	if !c.isComparable() {
-		return c, errorx.NoComparableError
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		return nil, err
 	}
+	return c.diffWith(arr, cmpFn), nil
+}
 
-	// 使用 map 优化查找算法,从 O(n*m) 降为 O(n+m)
-	// 构建第二个集合的索引 map
-	arrMap := make(map[int]bool, len(arr.value))
-	for i := range arr.value {
-		arrMap[i] = true
+// DiffBy 用 cmpFn 计算差集。cmpFn 返回 0 表示相等。
+func (c *Collection[T]) DiffBy(arr *Collection[T], cmpFn func(a, b T) int) (*Collection[T], error) {
+	if cmpFn == nil {
+		return nil, errorx.NilFunc
 	}
+	return c.diffWith(arr, cmpFn), nil
+}
 
+func (c *Collection[T]) diffWith(arr *Collection[T], cmpFn func(a, b T) int) *Collection[T] {
 	res := make([]T, 0, len(c.value))
 	for _, v := range c.value {
-		found := false
-		// 在 arrMap 中查找是否存在相同元素
-		for idx := range arrMap {
-			if c.compareFunc(v, arr.value[idx]) == 0 {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if arr == nil || !arr.containsWith(v, cmpFn) {
 			res = append(res, v)
 		}
 	}
-
-	return NewCollection(res), nil
+	return NewCollection(res)
 }
 
+// Sort 按元素自身升序排列，仅适用于预声明有序类型。直接修改当前集合。
+// 稳定排序，比较结果相等时保留原相对顺序。
 func (c *Collection[T]) Sort() (*Collection[T], error) {
-	if !c.isComparable() {
-		return nil, errorx.NoComparableError
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		return nil, err
 	}
 
-	sort.Slice(c.value, func(i, j int) bool {
-		return c.compareFunc(c.value[i], c.value[j]) < 0
-	})
+	slices.SortStableFunc(c.value, cmpFn)
 	return c, nil
 }
 
-// SortDesc 进行排序，倒序
+// SortDesc 按元素自身降序排列，仅适用于预声明有序类型。直接修改当前集合。
+// 稳定排序，比较结果相等时保留原相对顺序。
 func (c *Collection[T]) SortDesc() (*Collection[T], error) {
-	if !c.isComparable() {
-		// c.SetErr(errors.New("collection is not comparable"))
-		// return nil
-
-		return nil, errorx.NoComparableError
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		return nil, err
 	}
 
-	sort.Slice(c.value, func(i, j int) bool {
-		return c.compareFunc(c.value[i], c.value[j]) > 0
+	slices.SortStableFunc(c.value, func(a, b T) int {
+		return cmpFn(b, a)
 	})
-
 	return c, nil
 }
 
@@ -949,198 +721,163 @@ func (c *Collection[T]) Join(split string, format ...func(item interface{}) stri
 	return builder.String()
 }
 
-// Union 两个集合的并集
+// Union 返回两个预声明有序类型集合的并集，保留当前集合中的重复情况，再追加 arr 中没有的元素。
 func (c *Collection[T]) Union(arr *Collection[T]) (*Collection[T], error) {
-	if !c.isComparable() {
-		return nil, errorx.NoComparableError
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		return nil, err
 	}
+	return c.unionWith(arr, cmpFn), nil
+}
 
-	// 使用 map 优化查找算法,从 O(n*m) 降为 O(n+m)
-	// 构建第一个集合的索引 map
-	cMap := make(map[int]bool, len(c.value))
-	for i := range c.value {
-		cMap[i] = true
+// UnionBy 用 cmpFn 计算并集。cmpFn 返回 0 表示相等。
+func (c *Collection[T]) UnionBy(arr *Collection[T], cmpFn func(a, b T) int) (*Collection[T], error) {
+	if cmpFn == nil {
+		return nil, errorx.NilFunc
 	}
+	return c.unionWith(arr, cmpFn), nil
+}
 
-	// 先复制第一个集合的所有元素
-	res := make([]T, len(c.value), len(c.value)+len(arr.value))
+func (c *Collection[T]) unionWith(arr *Collection[T], cmpFn func(a, b T) int) *Collection[T] {
+	res := make([]T, len(c.value), len(c.value)+len(arrValue(arr)))
 	copy(res, c.value)
-
-	// 添加第二个集合中不存在于第一个集合的元素
+	if arr == nil {
+		return NewCollection(res)
+	}
 	for _, v := range arr.value {
+		if !c.containsWith(v, cmpFn) {
+			res = append(res, v)
+		}
+	}
+	return NewCollection(res)
+}
+
+func arrValue[T any](arr *Collection[T]) []T {
+	if arr == nil {
+		return nil
+	}
+	return arr.value
+}
+
+// Intersect 返回两个预声明有序类型集合的交集，保留当前集合中的出现顺序和重复。
+func (c *Collection[T]) Intersect(arr *Collection[T]) (*Collection[T], error) {
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		return nil, err
+	}
+	return c.intersectWith(arr, cmpFn), nil
+}
+
+// IntersectBy 用 cmpFn 计算交集。cmpFn 返回 0 表示相等。
+func (c *Collection[T]) IntersectBy(arr *Collection[T], cmpFn func(a, b T) int) (*Collection[T], error) {
+	if cmpFn == nil {
+		return nil, errorx.NilFunc
+	}
+	return c.intersectWith(arr, cmpFn), nil
+}
+
+func (c *Collection[T]) intersectWith(arr *Collection[T], cmpFn func(a, b T) int) *Collection[T] {
+	res := make([]T, 0, len(c.value))
+	for _, v := range c.value {
+		if arr != nil && arr.containsWith(v, cmpFn) {
+			res = append(res, v)
+		}
+	}
+	return NewCollection(res)
+}
+
+// Avg 对 fn 取出的数值求平均。空集合返回 0。
+func (c *Collection[T]) Avg[N number](fn func(T) N) float64 {
+	if c.IsEmpty() {
+		return 0
+	}
+
+	return c.Sum(fn) / float64(len(c.value))
+}
+
+// Median 对 fn 取出的数值求中位数。偶数个时取中间两个的平均值。空集合返回 0。
+// 不修改原集合。
+func (c *Collection[T]) Median[N number](fn func(T) N) float64 {
+	if c.IsEmpty() {
+		return 0
+	}
+
+	nums := make([]float64, len(c.value))
+	for i, item := range c.value {
+		nums[i] = toFloat(fn(item))
+	}
+	slices.Sort(nums)
+
+	n := len(nums)
+	if n%2 == 0 {
+		return (nums[n/2-1] + nums[n/2]) / 2
+	}
+
+	return nums[n/2]
+}
+
+// Mode 返回预声明有序类型中出现次数最多的元素。空集合返回 EmptyError。
+// 次数相同时，保留先出现的那个。
+func (c *Collection[T]) Mode() (T, error) {
+	cmpFn, err := c.basicOrderedCmp()
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return c.modeWith(cmpFn)
+}
+
+// ModeBy 用 cmpFn 统计众数。cmpFn 返回 0 表示相等。空集合返回 EmptyError。
+func (c *Collection[T]) ModeBy(cmpFn func(a, b T) int) (T, error) {
+	if cmpFn == nil {
+		var zero T
+		return zero, errorx.NilFunc
+	}
+	return c.modeWith(cmpFn)
+}
+
+func (c *Collection[T]) modeWith(cmpFn func(a, b T) int) (T, error) {
+	var zero T
+	if c.IsEmpty() {
+		return zero, errorx.EmptyError
+	}
+
+	type bucket struct {
+		item  T
+		count int
+	}
+	buckets := make([]bucket, 0, len(c.value))
+	for _, item := range c.value {
 		found := false
-		for idx := range cMap {
-			if c.compareFunc(v, c.value[idx]) == 0 {
+		for i := range buckets {
+			if cmpFn(buckets[i].item, item) == 0 {
+				buckets[i].count++
 				found = true
 				break
 			}
 		}
 		if !found {
-			res = append(res, v)
+			buckets = append(buckets, bucket{item: item, count: 1})
 		}
 	}
 
-	return NewCollection(res), nil
+	best := buckets[0]
+	for _, b := range buckets[1:] {
+		if b.count > best.count {
+			best = b
+		}
+	}
+	return best.item, nil
 }
 
-// Intersect 两个集合的交集
-func (c *Collection[T]) Intersect(arr *Collection[T]) (*Collection[T], error) {
-	if !c.isComparable() {
-		return nil, errorx.NoComparableError
-	}
-
-	// 使用 map 优化查找算法,从 O(n*m) 降为 O(n+m)
-	// 构建第二个集合的索引 map
-	arrMap := make(map[int]bool, len(arr.value))
-	for i := range arr.value {
-		arrMap[i] = true
-	}
-
-	res := make([]T, 0, len(c.value))
-	for _, v := range c.value {
-		found := false
-		// 在第二个集合中查找是否存在相同元素
-		for idx := range arrMap {
-			if c.compareFunc(v, arr.value[idx]) == 0 {
-				found = true
-				break
-			}
-		}
-		if found {
-			res = append(res, v)
-		}
-	}
-
-	return NewCollection(res), nil
-}
-
-// Avg 获取平均值
-func (c *Collection[T]) Avg() (float64, error) {
-	if !c.isComputable() {
-		return 0.0, errorx.NoComputableError
-	}
-
-	if c.IsEmpty() {
-		return 0.0, nil
-	}
-	sum, err := c.Sum()
-	if err != nil {
-		return 0.0, err
-	}
-
-	return sum / float64(len(c.value)), nil
-}
-
-// Median 获取中位值。
-// 中位数（Median）又称中值，统计学中的专有名词，是按顺序排列的一组数据中居于中间位置的数，代表一个样本、种群或概率分布中的一个数值，其可将数值集合划分为相等的上下两部分。
-// 对于有限的数集，可以通过把所有观察值高低排序后找出正中间的一个作为中位数。如果观察值有偶数个，通常取最中间的两个数值的平均数作为中位数。
-func (c *Collection[T]) Median() (float64, error) {
-	if !c.isComputable() {
-		return 0.0, errorx.NoComputableError
-	}
-
-	if c.IsEmpty() {
-		return 0.0, nil
-	}
-
-	// 修复副作用:先复制集合再排序,避免修改原集合
-	coll := c.Copy()
-	_, err := coll.Sort()
-	if err != nil {
-		return 0.0, err
-	}
-
-	// 直接计算中位数,避免创建不必要的新集合
-	length := len(coll.value)
-	if length%2 == 0 {
-		// 偶数个元素:取中间两个的平均值
-		mid1 := coll.Index(length/2 - 1)
-		mid2 := coll.Index(length / 2)
-		tempColl := NewCollection([]T{mid1, mid2})
-		return tempColl.Avg()
-	}
-	// 奇数个元素:取中间元素
-	mid := coll.Index(length / 2)
-	tempColl := NewCollection([]T{mid})
-	return tempColl.Avg()
-}
-
-// Mode 获取Mode值，众数，一组数据中出现最多的
-func (c *Collection[T]) Mode() (T, error) {
-	var zero T
-	if !c.isComparable() {
-		return zero, errorx.NoComparableError
-	}
-
-	if c.IsEmpty() {
-		return zero, nil
-	}
-
-	// 使用 map 优化统计算法,从 O(n²) 降为 O(n)
-	// key 是元素在原数组中的索引,value 是出现次数
-	countMap := make(map[int]int)
-	// 记录每个元素首次出现的索引
-	firstIndex := make(map[int]int)
-
-	for i, item := range c.value {
-		found := false
-		foundIdx := -1
-		// 查找是否已经统计过相同的元素
-		for idx := range countMap {
-			if c.compareFunc(c.value[idx], item) == 0 {
-				found = true
-				foundIdx = idx
-				break
-			}
-		}
-
-		if found {
-			countMap[foundIdx]++
-		} else {
-			countMap[i] = 1
-			firstIndex[i] = i
-		}
-	}
-
-	// 找出出现次数最多的元素
-	var maxCount int
-	var maxIndex int
-	for idx, count := range countMap {
-		if count > maxCount {
-			maxCount = count
-			maxIndex = firstIndex[idx]
-		}
-	}
-
-	return c.value[maxIndex], nil
-}
-
-// Sum 获取sum值
-func (c *Collection[T]) Sum() (float64, error) {
-	if c.IsEmpty() {
-		return 0.0, nil
-	}
-	if !c.isComputable() {
-		return 0.0, errorx.NoComputableError
-	}
-
-	sum := float64(0)
-	// 优化反射性能:缓存 reflect.ValueOf 结果,避免在循环中重复调用
+// Sum 对 fn 取出的数值求和。空集合返回 0。
+func (c *Collection[T]) Sum[N number](fn func(T) N) float64 {
+	var sum float64
 	for _, item := range c.value {
-		val := reflect.ValueOf(item)
-		switch val.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			sum += float64(val.Int())
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			sum += float64(val.Uint())
-		case reflect.Float32, reflect.Float64:
-			sum += val.Float()
-		default:
-			return 0.0, fmt.Errorf("unsupported type: %T", item)
-		}
+		sum += toFloat(fn(item))
 	}
 
-	return sum, nil
+	return sum
 }
 
 // Values 获取值

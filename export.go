@@ -5,17 +5,10 @@ import (
 	"github.com/ZHOUXING1997/collection/slice_collcection"
 )
 
-// NewSliceCollect 创建并返回一个新的 Collection 实例。
+// NewSliceCollect 创建并返回一个新的切片 Collection。
 //
-// 该函数接收一个切片作为输入，并自动初始化适合该类型的比较函数。
-// 对于基本类型（如 int, string, float 等），会自动设置默认的比较函数。
-// 对于结构体类型，可能需要手动设置比较函数。
-//
-// 参数:
-//   - values: 要初始化的切片
-//
-// 返回:
-//   - *Collection[T]: 新创建的 Collection 实例
+// 比较不在创建时决定。int、uint、float、string 在 Sort、Max、Contains 等方法调用时生成比较函数。
+// 结构体和定义类型必须把比较函数传给对应的 By 方法。
 func NewSliceCollect[T any](values []T) *slice_collcection.Collection[T] {
 	return slice_collcection.NewCollection[T](values)
 }

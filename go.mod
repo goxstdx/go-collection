@@ -1,3 +1,3 @@
 module github.com/ZHOUXING1997/collection
 
-go 1.21
+go 1.27

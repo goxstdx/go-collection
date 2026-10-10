@@ -13,6 +13,9 @@ var ElementNoComputableError = errors.New("element can not be computable")
 var KeyUnComparableError = errors.New("key has unComparable type")
 var NoComparableError = errors.New("collection is not comparable")
 var NotFoundError = fmt.Errorf("not found")
+
+// EmptyError 表示 Min、Max、Mode 作用在空集合上。伴随返回的零值不是结果。
+var EmptyError = errors.New("collection is empty")
 var InvalidTypeError = errors.New("invalid type")
 
 var NotHaveKeyCompareFunc = errors.New("not have key compare func")

@@ -686,12 +686,11 @@ func TestGroupBy(t *testing.T) {
 	coll := NewCollection([]int{1, 2, 3, 4, 5})
 
 	// define a function that groups even and odd numbers
-	groupBy := func(item int, key int) interface{} {
+	groupBy := func(item int, key int) string {
 		if item%2 == 0 {
 			return "even"
-		} else {
-			return "odd"
 		}
+		return "odd"
 	}
 
 	// group the collection by even and odd numbers
@@ -752,21 +751,16 @@ func TestPluckString(t *testing.T) {
 		{"Charlie", "40"},
 	})
 
-	// pluck the "name" field from the collection
-	pluckedColl, err := coll.PluckString("Name")
-
-	if err != nil {
-		t.Errorf("PluckString return err")
-	}
+	pluckedColl := coll.PluckField(func(p Person) string { return p.Name })
 
 	// check if the length of the plucked collection is correct
 	if len(pluckedColl.value) != 3 {
-		t.Errorf("PluckString did not return the correct number of elements")
+		t.Errorf("PluckField did not return the correct number of elements")
 	}
 
 	// check if the plucked collection contains the correct elements
 	if pluckedColl.value[0] != "Alice" || pluckedColl.value[1] != "Bob" || pluckedColl.value[2] != "Charlie" {
-		t.Errorf("PluckString did not return the correct elements")
+		t.Errorf("PluckField did not return the correct elements")
 	}
 
 }
@@ -778,21 +772,16 @@ func TestPluckStringPointer(t *testing.T) {
 	person3 := Person{"Charlie", "40"}
 	coll := NewCollection([]*Person{&person1, &person2, &person3})
 
-	// pluck the "name" field from the collection
-	pluckedColl, err := coll.PluckString("Name")
-
-	if err != nil {
-		t.Errorf("PluckString return err")
-	}
+	pluckedColl := coll.PluckField(func(p *Person) string { return p.Name })
 
 	// check if the length of the plucked collection is correct
 	if len(pluckedColl.value) != 3 {
-		t.Errorf("PluckString did not return the correct number of elements")
+		t.Errorf("PluckField did not return the correct number of elements")
 	}
 
 	// check if the plucked collection contains the correct elements
 	if pluckedColl.value[0] != "Alice" || pluckedColl.value[1] != "Bob" || pluckedColl.value[2] != "Charlie" {
-		t.Errorf("PluckString did not return the correct elements")
+		t.Errorf("PluckField did not return the correct elements")
 	}
 
 }
@@ -809,11 +798,7 @@ func TestPluckInt64(t *testing.T) {
 		{3, 40},
 	})
 
-	// pluck the "id" field from the collection
-	pluckedColl, err := coll.PluckInt64("Id")
-	if err != nil {
-		t.Errorf("PluckInt64 return err, %v", err)
-	}
+	pluckedColl := coll.PluckField(func(p Person) int64 { return p.Id })
 
 	// check if the length of the plucked collection is correct
 	if pluckedColl.Count() != 3 {
@@ -839,11 +824,7 @@ func TestPluckFloat64(t *testing.T) {
 		{3.99, 30},
 	})
 
-	// pluck the "price" field from the collection
-	pluckedColl, err := coll.PluckFloat64("Price")
-	if err != nil {
-		t.Errorf("PluckFloat64 return err, %v", err)
-	}
+	pluckedColl := coll.PluckField(func(p Product) float64 { return p.Price })
 
 	// check if the length of the plucked collection is correct
 	if pluckedColl.Count() != 3 {
@@ -869,11 +850,7 @@ func TestPluckUint64(t *testing.T) {
 		{3, 40},
 	})
 
-	// pluck the "id" field from the collection
-	pluckedColl, err := coll.PluckUint64("Id")
-	if err != nil {
-		t.Errorf("PluckUint64 return err, %v", err)
-	}
+	pluckedColl := coll.PluckField(func(p Person) uint64 { return p.Id })
 
 	// check if the length of the plucked collection is correct
 	if pluckedColl.Count() != 3 {
@@ -899,11 +876,7 @@ func TestPluckBool(t *testing.T) {
 		{true, true},
 	})
 
-	// pluck the "is_active" field from the collection
-	pluckedColl, err := coll.PluckBool("IsActive")
-	if err != nil {
-		t.Errorf("PluckBool return err, %v", err)
-	}
+	pluckedColl := coll.PluckField(func(u User) bool { return u.IsActive })
 
 	// check if the length of the plucked collection is correct
 	if pluckedColl.Count() != 3 {
@@ -929,11 +902,7 @@ func TestSortBy(t *testing.T) {
 		{2, 40},
 	})
 
-	// sort the collection by the "id" field
-	sortedColl, err := coll.SortBy("Id")
-	if err != nil {
-		t.Errorf("SortBy returned an error, %v", err)
-	}
+	sortedColl := coll.SortBy(func(p Person) int { return p.Id })
 
 	// check if the length of the sorted collection is correct
 	if len(sortedColl.value) != 3 {
@@ -962,11 +931,14 @@ func TestSortFloatBy(t *testing.T) {
 		{"200", "47222.3192575596"},
 	})
 
-	// sort the collection by the "id" field
-	sortedColl, err := coll.SortFloatBy("Deductible")
-	if err != nil {
-		t.Errorf("SortBy returned an error, %v", err)
-	}
+	sortedColl := coll.SortBy(func(v T) float64 {
+		f, err := strconv.ParseFloat(v.Deductible, 64)
+		if err != nil {
+			t.Errorf("parse float err: %v", err)
+			return 0
+		}
+		return f
+	})
 
 	// check if the length of the sorted collection is correct
 	if len(sortedColl.value) != coll.Count() {
@@ -993,11 +965,7 @@ func TestSortByPtr(t *testing.T) {
 		{2, 40},
 	})
 
-	// sort the collection by the "id" field
-	sortedColl, err := coll.SortBy("Id")
-	if err != nil {
-		t.Errorf("SortBy returned an error, %v", err)
-	}
+	sortedColl := coll.SortBy(func(p *Person) int { return p.Id })
 
 	// check if the length of the sorted collection is correct
 	if len(sortedColl.value) != 3 {
@@ -1070,11 +1038,7 @@ func TestSortByDesc(t *testing.T) {
 		{2, 40},
 	})
 
-	// sort the collection by the "id" field in descending order
-	sortedColl, err := coll.SortByDesc("Id")
-	if err != nil {
-		t.Errorf("SortByDesc returned an error, %v", err)
-	}
+	sortedColl := coll.SortByDesc(func(p Person) int { return p.Id })
 
 	// check if the length of the sorted collection is correct
 	if sortedColl.Count() != 3 {
@@ -1100,11 +1064,7 @@ func TestSortByDescPtr(t *testing.T) {
 		{2, 40},
 	})
 
-	// sort the collection by the "id" field in descending order
-	sortedColl, err := coll.SortByDesc("Id")
-	if err != nil {
-		t.Errorf("SortByDesc returned an error, %v", err)
-	}
+	sortedColl := coll.SortByDesc(func(p *Person) int { return p.Id })
 
 	// check if the length of the sorted collection is correct
 	if sortedColl.Count() != 3 {
@@ -1130,13 +1090,7 @@ func TestKeyByStrField(t *testing.T) {
 		{"Charlie", "40"},
 	})
 
-	// key the collection by the "name" field
-	keyedColl, err := coll.KeyByStrField("Name")
-
-	// check if the error is nil
-	if err != nil {
-		t.Errorf("KeyByStrField returned an error, %v", err)
-	}
+	keyedColl := coll.KeyBy(func(p Person) string { return p.Name })
 
 	// check if the length of the keyed collection is correct
 	if len(keyedColl) != 3 {
@@ -1350,10 +1304,7 @@ func TestAvg(t *testing.T) {
 	coll := NewCollection([]int{1, 2, 3, 4, 5})
 
 	// get the average of the elements in the collection
-	avg, err := coll.Avg()
-	if err != nil {
-		t.Errorf("Avg returned an error: %v", err)
-	}
+	avg := coll.Avg(func(v int) int { return v })
 
 	// check if the average is correct
 	if avg != 3 {
@@ -1367,10 +1318,7 @@ func TestMedian(t *testing.T) {
 	coll := NewCollection([]int{1, 2, 3, 4, 5})
 
 	// get the median of the elements in the collection
-	median, err := coll.Median()
-	if err != nil {
-		t.Errorf("Median returned an error: %v", err)
-	}
+	median := coll.Median(func(v int) int { return v })
 
 	// check if the median is correct
 	if median != 3 {
@@ -1381,10 +1329,7 @@ func TestMedian(t *testing.T) {
 	coll2 := NewCollection([]int{1, 2, 3, 4, 5, 6})
 
 	// get the median of the elements in the collection
-	median2, err := coll2.Median()
-	if err != nil {
-		t.Errorf("Median returned an error: %v", err)
-	}
+	median2 := coll2.Median(func(v int) int { return v })
 
 	// check if the median is correct
 	if median2 != 3.5 {
@@ -1415,10 +1360,7 @@ func TestSum(t *testing.T) {
 	coll := NewCollection([]int{1, 2, 3, 4, 5})
 
 	// get the sum of the elements in the collection
-	sum, err := coll.Sum()
-	if err != nil {
-		t.Errorf("Sum returned an error: %v", err)
-	}
+	sum := coll.Sum(func(v int) int { return v })
 
 	// check if the sum is correct
 	if sum != 15 {

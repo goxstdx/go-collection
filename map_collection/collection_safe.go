@@ -181,17 +181,16 @@ func (sc *SafeCollection[K, V]) Filter(fn func(V, K) bool) *SafeCollection[K, V]
 	}
 }
 
-// TODO 后续看看怎么，现在没办法返回新的
-// // Map 映射转换（返回新的线程安全 Collection）
-// func (sc *SafeCollection[K, V]) Map(fn func(V, K) V) *SafeCollection[K, V] {
-// 	sc.mu.RLock()
-// 	newColl := sc.coll.Map(fn)
-// 	sc.mu.RUnlock()
-//
-// 	return &SafeCollection[K, V]{
-// 		coll: newColl,
-// 	}
-// }
+// Map 映射转换，返回新的线程安全 Collection。R 可以与 V 不同。
+func (sc *SafeCollection[K, V]) Map[R any](fn func(V, K) R) *SafeCollection[K, R] {
+	sc.mu.RLock()
+	newColl := sc.coll.Map(fn)
+	sc.mu.RUnlock()
+
+	return &SafeCollection[K, R]{
+		coll: newColl,
+	}
+}
 
 // Each 遍历每个元素
 func (sc *SafeCollection[K, V]) Each(fn func(V, K)) {

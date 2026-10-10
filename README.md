@@ -18,66 +18,52 @@ go get github.com/ZHOUXING1997/collection@v0.0.5
 
 ## 支持的类型
 
-Collection包目前支持的元素类型：
-- int32, int, int64
-- uint32, uint, uint64
-- float32, float64
-- string
-- object (结构体)
-- objectPoint (结构体指针)
+元素类型是任意 `T`。比较和数值聚合另有约束：
+
+- `Sort`、`Max`、`Min`、`Contains`、`Unique`、`Diff`、`Union`、`Intersect`、`Mode` 的无参形式只接受预声明的整数、无符号整数、`float32`、`float64`、`string`
+- 结构体和 `type MyInt int` 这类定义类型，把比较函数传给对应的 `By` 方法
+- `Sum`、`Avg`、`Median` 通过函数取出预声明整数或浮点数
 
 ## 使用示例
 
-### 初始化Collection
+### 初始化 Collection
 
 ```go
-// 初始化整数集合
-intColl := NewIntCollection([]int{1, 2, 3, 4, 5})
+intColl := collection.NewSliceCollect([]int{1, 2, 3, 4, 5})
+strColl := collection.NewSliceCollect([]string{"a", "b", "c"})
 
-// 初始化字符串集合
-strColl := NewStrCollection([]string{"a", "b", "c"})
-
-// 初始化结构体集合
 type User struct {
     Name string
     Age  int
 }
 users := []User{{Name: "张三", Age: 18}, {Name: "李四", Age: 20}}
-objColl := NewObjCollection(users)
+objColl := collection.NewSliceCollect(users)
 ```
 
 ### 常用方法示例
 
 ```go
-// 过滤集合
-filtered := intColl.Filter(func(item interface{}, key int) bool {
-    return item.(int) > 2
+filtered := intColl.Filter(func(item int, key int) bool {
+    return item > 2
 })
 
-// 映射集合
-mapped := intColl.Map(func(item interface{}, key int) interface{} {
-    return item.(int) * 2
+mapped := intColl.Map(func(item int, key int) int {
+    return item * 2
 })
 
-// 排序集合
-sorted := intColl.Sort()
+sorted, err := intColl.Sort()
+index, err := intColl.Search(3)
+first := intColl.First()
+contains, err := intColl.Contains(3)
 
-// 查找元素
-index := intColl.Search(3) // 返回元素3的索引
-
-// 获取第一个元素
-first, _ := intColl.First().ToInt()
-
-// 获取最后一个元素
-last, _ := intColl.Last().ToInt()
-
-// 判断是否包含某元素
-contains := intColl.Contains(3)
+oldest, err := objColl.MaxBy(func(a, b User) int {
+    return cmp.Compare(a.Age, b.Age) // cmp 为标准库 cmp
+})
 ```
 
 ## 更多示例
 
-更多使用示例请参考 [使用手册](http://collection.funaio.cn/)
+完整接口见 [API 说明](docs/guide/api.md)。
 
 ## 版本历史
 

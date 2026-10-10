@@ -544,7 +544,7 @@ func TestPluck(t *testing.T) {
 	}
 	c := map_collection.NewCollection(m)
 
-	names := c.Pluck("Name")
+	names := c.PluckField(func(p Person) string { return p.Name })
 	if len(names) != 3 {
 		t.Errorf("Pluck returned wrong number of items: %d", len(names))
 	}
@@ -552,9 +552,7 @@ func TestPluck(t *testing.T) {
 	// 验证是否包含所有名字
 	nameMap := make(map[string]bool)
 	for _, name := range names {
-		if name != nil {
-			nameMap[name.(string)] = true
-		}
+		nameMap[name] = true
 	}
 
 	if !nameMap["Alice"] || !nameMap["Bob"] || !nameMap["Charlie"] {
@@ -570,20 +568,16 @@ func TestPluckFunc(t *testing.T) {
 	}
 	c := map_collection.NewCollection(m)
 
-	ages := c.PluckFunc(func(p Person) any {
-		return p.Age
-	})
+	ages := c.PluckField(func(p Person) int { return p.Age })
 
 	if len(ages) != 3 {
-		t.Errorf("PluckFunc returned wrong number of items: %d", len(ages))
+		t.Errorf("PluckField returned wrong number of items: %d", len(ages))
 	}
 
 	// 验证是否包含所有年龄
 	ageMap := make(map[int]bool)
 	for _, age := range ages {
-		if age != nil {
-			ageMap[age.(int)] = true
-		}
+		ageMap[age] = true
 	}
 
 	if !ageMap[30] || !ageMap[25] || !ageMap[35] {
@@ -938,7 +932,7 @@ func TestSingleElementDeleteToEmpty(t *testing.T) {
 func TestPluckOnEmptyCollection(t *testing.T) {
 	c := map_collection.NewCollection(map[string]Person{})
 
-	names := c.Pluck("Name")
+	names := c.PluckField(func(p Person) string { return p.Name })
 	if len(names) != 0 {
 		t.Errorf("Pluck on empty collection should return empty slice, got %d items", len(names))
 	}
@@ -948,9 +942,7 @@ func TestPluckOnEmptyCollection(t *testing.T) {
 func TestPluckFuncOnEmptyCollection(t *testing.T) {
 	c := map_collection.NewCollection(map[string]Person{})
 
-	ages := c.PluckFunc(func(p Person) any {
-		return p.Age
-	})
+	ages := c.PluckField(func(p Person) int { return p.Age })
 	if len(ages) != 0 {
 		t.Errorf("PluckFunc on empty collection should return empty slice, got %d items", len(ages))
 	}

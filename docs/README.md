@@ -7,6 +7,7 @@
 
 - 指南：
   - 安装与版本：`docs/guide/install.md`
+  - API 说明：`docs/guide/api.md`
   - 切片集合使用：`docs/guide/usage-slice.md`
   - Map 集合使用：`docs/guide/usage-map.md`
   - 版本与发布（自动生成）：`docs/guide/RELEASES.md`

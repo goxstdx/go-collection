@@ -1,16 +1,13 @@
 package map_collection
 
 import (
-	"reflect"
 	"sync"
 )
 
 // Collection 是集合操作的核心结构，实现了对各种数据类型的集合操作。
 // Collection 是针对map类型的集合操作核心结构
 type Collection[K comparable, V any] struct {
-	value map[K]V      // map数据
-	vType reflect.Type // value中值的类型
-	kType reflect.Type // key的类型
+	value map[K]V // map数据
 
 	// 比较函数，用于值的比较
 	valCompareFunc func(V, V) int
@@ -40,15 +37,8 @@ func WithValCompare[K comparable, V any](compareFunc func(V, V) int) CollectionO
 // NewCollection 创建并返回一个新的 Collection 实例
 // 支持函数式选项模式配置比较函数
 func NewCollection[T ~map[K]V, K comparable, V any](values T, opts ...CollectionOption[K, V]) *Collection[K, V] {
-	var vzero V
-	vType := reflect.TypeOf(vzero)
-	var kZero K
-	kType := reflect.TypeOf(kZero)
-
 	coll := &Collection[K, V]{
 		value:          values,
-		vType:          vType,
-		kType:          kType,
 		valCompareFunc: nil,
 		keyCompareFunc: nil,
 		sortedKeys:     Keys(values),

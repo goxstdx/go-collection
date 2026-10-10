@@ -11,7 +11,6 @@ package map_collection
 
 import (
 	"maps"
-	"reflect"
 )
 
 // Keys 返回 map 的所有键。
@@ -171,66 +170,12 @@ func Reduce[M ~map[K]V, K comparable, V any, R any](m M, init R, fn func(acc R, 
 	return acc
 }
 
-// Pluck 从 map 的所有 value 中提取指定字段，返回类型安全的切片
-// 适用于 V 是结构体或结构体指针的场景
-// fieldName: 字段名
-// R: 字段类型（需要与实际字段类型匹配）
-func Pluck[M ~map[K]V, K comparable, V any, R any](m M, fieldName string) []R {
+// Pluck 用 fn 从 map 的每个 value 取出一个值。遍历顺序不稳定。
+func Pluck[M ~map[K]V, K comparable, V any, R any](m M, fn func(V) R) []R {
 	result := make([]R, 0, len(m))
-
 	for _, v := range m {
-		val := reflect.ValueOf(v)
-
-		// 处理指针类型
-		if val.Kind() == reflect.Ptr {
-			if val.IsNil() {
-				continue
-			}
-			val = val.Elem()
-		}
-
-		// 确保是结构体
-		if val.Kind() != reflect.Struct {
-			continue
-		}
-
-		// 获取字段值
-		field := val.FieldByName(fieldName)
-		if !field.IsValid() {
-			continue
-		}
-
-		// 类型断言并添加到结果
-		if fieldValue, ok := field.Interface().(R); ok {
-			result = append(result, fieldValue)
-		}
+		result = append(result, fn(v))
 	}
 
 	return result
-}
-
-// extractField 从值中提取指定字段
-func extractField(v any, fieldName string) any {
-	val := reflect.ValueOf(v)
-
-	// 处理指针类型
-	if val.Kind() == reflect.Ptr {
-		if val.IsNil() {
-			return nil
-		}
-		val = val.Elem()
-	}
-
-	// 确保是结构体
-	if val.Kind() != reflect.Struct {
-		return nil
-	}
-
-	// 获取字段值
-	field := val.FieldByName(fieldName)
-	if !field.IsValid() {
-		return nil
-	}
-
-	return field.Interface()
 }

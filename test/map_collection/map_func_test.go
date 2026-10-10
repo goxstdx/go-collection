@@ -311,7 +311,7 @@ func TestFuncPluck(t *testing.T) {
 		"p3": {Name: "Charlie", Age: 35},
 	}
 
-	names := map_collection.Pluck[map[string]TestPerson, string, TestPerson, string](m, "Name")
+	names := map_collection.Pluck(m, func(p TestPerson) string { return p.Name })
 
 	if len(names) != 3 {
 		t.Errorf("Pluck returned wrong number of items: %d", len(names))
@@ -328,7 +328,7 @@ func TestFuncPluck(t *testing.T) {
 	}
 
 	// 测试提取Age
-	ages := map_collection.Pluck[map[string]TestPerson, string, TestPerson, int](m, "Age")
+	ages := map_collection.Pluck(m, func(p TestPerson) int { return p.Age })
 	if len(ages) != 3 {
 		t.Errorf("Pluck Age returned wrong number of items: %d", len(ages))
 	}
@@ -350,7 +350,12 @@ func TestPluckWithPointer(t *testing.T) {
 		"p3": nil, // 测试nil指针
 	}
 
-	names := map_collection.Pluck[map[string]*TestPerson, string, *TestPerson, string](m, "Name")
+	names := map_collection.Pluck(m, func(p *TestPerson) string {
+		if p == nil {
+			return ""
+		}
+		return p.Name
+	})
 
 	// 应该包含2个有效名字
 	validNames := 0

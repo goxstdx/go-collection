@@ -2,9 +2,9 @@
 
 适用集合：slice_collcection
 
-`Map(func(item T, key int) T) *Collection[T]`
+`Map[R any](func(item T, key int) R) *Collection[R]`
 
-对集合中的每个元素进行函数映射，返回同类型的新集合。若需“映射并过滤”，请使用 `MapFilter`。
+对集合中的每个元素进行函数映射。结果元素类型由函数返回值决定，可以和原元素不同。若需映射并过滤，请使用 `MapFilter`。
 
 ```go
 c := collection.NewSliceCollect([]int{1, 2, 3, 4})
