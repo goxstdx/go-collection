@@ -1,14 +1,12 @@
 # Collection
 
-Collection包目标是用于替换golang原生的Slice，使用场景是在大量不追求极致性能，追求业务开发效能的场景。
+Collection 是一个 Go 泛型集合库，为切片（Slice）和 Map 提供常用的集合操作，适用于侧重业务开发效率的场景。
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/ZHOUXING1997/collection.svg)](https://pkg.go.dev/github.com/ZHOUXING1997/collection)
 
-> 本项目 forked from [jianfengye/collection](https://github.com/jianfengye/collection)，并修改部分内容以适配自己的项目。
-
 ## 简介
 
-Collection包封装了对切片（Slice）的各种操作，使其更符合业务开发的语义，提高开发效率。该库支持多种数据类型，包括基本类型和结构体类型，并提供了丰富的方法来操作和转换这些数据。
+Collection 提供过滤、映射、查找、排序、分组和数值聚合等操作，支持基本类型和结构体类型。通过泛型和调用方传入的函数完成类型转换、比较及取值，并提供线程安全的 Map 集合。
 
 ## 安装
 
@@ -114,7 +112,7 @@ v0.1.0 删除了按字段名反射取值，也删除了预先保存的比较函�
 | v0.0.4 | 修复部分问题，优化代码结构 |
 | v0.0.3 | 增加新的功能和测试用例 |
 | v0.0.2 | 修复初始版本的问题，改进性能 |
-| v0.0.1 | 初始版本，从 jianfengye/collection 项目分支而来 |
+| v0.0.1 | 初始版本 |
 
 ## 许可证
 
