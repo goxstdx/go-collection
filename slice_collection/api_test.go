@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ZHOUXING1997/collection/errorx"
+	"github.com/goxstdx/go-collection/errorx"
 )
 
 // TestBasicTypesCompareAtCall 验证预声明有序类型在调用时生成比较函数。

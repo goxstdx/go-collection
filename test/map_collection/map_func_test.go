@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ZHOUXING1997/collection/map_collection"
+	"github.com/goxstdx/go-collection/map_collection"
 )
 
 func TestFuncKeys(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ZHOUXING1997/collection/errorx"
-	"github.com/ZHOUXING1997/collection/map_collection"
+	"github.com/goxstdx/go-collection/errorx"
+	"github.com/goxstdx/go-collection/map_collection"
 )
 
 func cmpStringKey(a string, _ int, b string, _ int) int {

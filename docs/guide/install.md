@@ -7,13 +7,13 @@
 推荐使用 Go Modules，模块要求 Go 1.27：
 
 ```bash
-go get github.com/ZHOUXING1997/collection@latest
+go get github.com/goxstdx/go-collection@latest
 ```
 
 如需固定版本，请将 `latest` 替换为具体 tag，例如：
 
 ```bash
-go get github.com/ZHOUXING1997/collection@v0.1.0
+go get github.com/goxstdx/go-collection@v0.1.1
 ```
 
 快速开始（切片与 Map 示例）：
@@ -23,7 +23,7 @@ package main
 
 import (
     "fmt"
-    "github.com/ZHOUXING1997/collection"
+    "github.com/goxstdx/go-collection"
 )
 
 func main() {
@@ -40,6 +40,6 @@ func main() {
 ```
 
 更多版本信息请查看 `docs/guide/RELEASES.md` 或前往 pkg 站点查看：
-- 入口包：[`github.com/ZHOUXING1997/collection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection)
-- 切片集合：[`.../slice_collection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection/slice_collection)
-- Map 集合：[`.../map_collection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection/map_collection)
+- 入口包：[`github.com/goxstdx/go-collection`](https://pkg.go.dev/github.com/goxstdx/go-collection)
+- 切片集合：[`.../slice_collection`](https://pkg.go.dev/github.com/goxstdx/go-collection/slice_collection)
+- Map 集合：[`.../map_collection`](https://pkg.go.dev/github.com/goxstdx/go-collection/map_collection)

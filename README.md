@@ -2,7 +2,7 @@
 
 Collection 是一个 Go 泛型集合库，为切片（Slice）和 Map 提供常用的集合操作，适用于侧重业务开发效率的场景。
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/ZHOUXING1997/collection.svg)](https://pkg.go.dev/github.com/ZHOUXING1997/collection)
+[![Go Reference](https://pkg.go.dev/badge/github.com/goxstdx/go-collection.svg)](https://pkg.go.dev/github.com/goxstdx/go-collection)
 
 ## 简介
 
@@ -11,7 +11,7 @@ Collection 提供过滤、映射、查找、排序、分组和数值聚合等操
 ## 安装
 
 ```bash
-go get github.com/ZHOUXING1997/collection@v0.1.0
+go get github.com/goxstdx/go-collection@v0.1.1
 ```
 
 ## 支持的类型
@@ -106,6 +106,7 @@ v0.1.0 删除了按字段名反射取值，也删除了预先保存的比较函�
 
 | 版本 | 说明 |
 | --- | --- |
+| v0.1.1 | 迁移模块路径至 `github.com/goxstdx/go-collection` |
 | v0.1.0 | 去掉反射和预存比较函数；切片的增删改和重排直接修改原集合 |
 | v0.0.6 | 重新打tag，无功能变更 |
 | v0.0.5 | 添加 pkg.go.dev 文档支持，完善包和主要类型的文档注释 |

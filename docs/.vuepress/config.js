@@ -16,7 +16,7 @@ module.exports = {
         items: [
           {
             text: "collection",
-            link: "https://github.com/ZHOUXING1997/collection",
+            link: "https://github.com/goxstdx/go-collection",
           },
         ],
       },

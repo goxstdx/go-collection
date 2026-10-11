@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/ZHOUXING1997/collection/errorx"
+	"github.com/goxstdx/go-collection/errorx"
 )
 
 // Copy 复制一个新的 Collection

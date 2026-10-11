@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ZHOUXING1997/collection/errorx"
+	"github.com/goxstdx/go-collection/errorx"
 )
 
 // TestNewMapCollect_Basic 测试基本功能

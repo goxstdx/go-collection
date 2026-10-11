@@ -3,7 +3,7 @@ package map_collection
 import (
 	"testing"
 
-	"github.com/ZHOUXING1997/collection/map_collection"
+	"github.com/goxstdx/go-collection/map_collection"
 )
 
 // TestMapResultType 验证 Map 的结果类型由函数返回值决定，且不改原集合。

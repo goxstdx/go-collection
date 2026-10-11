@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ZHOUXING1997/collection/errorx"
-	"github.com/ZHOUXING1997/collection/map_collection"
+	"github.com/goxstdx/go-collection/errorx"
+	"github.com/goxstdx/go-collection/map_collection"
 )
 
 func TestNewCollection(t *testing.T) {

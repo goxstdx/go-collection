@@ -78,4 +78,4 @@ _ = sum
 `Sum`、`Avg`、`Median` 接收一个取出数值的函数，空集合返回 `0`，不返回 error。`Map` 的返回元素类型由函数返回值决定，可以和原元素不同。
 
 更多 API 说明见 pkg 文档：
-- [`github.com/ZHOUXING1997/collection/slice_collection`](https://pkg.go.dev/github.com/ZHOUXING1997/collection/slice_collection)
+- [`github.com/goxstdx/go-collection/slice_collection`](https://pkg.go.dev/github.com/goxstdx/go-collection/slice_collection)

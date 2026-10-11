@@ -1,8 +1,8 @@
 package collection
 
 import (
-	"github.com/ZHOUXING1997/collection/map_collection"
-	"github.com/ZHOUXING1997/collection/slice_collection"
+	"github.com/goxstdx/go-collection/map_collection"
+	"github.com/goxstdx/go-collection/slice_collection"
 )
 
 // NewSliceCollect 创建并返回一个新的切片 Collection。

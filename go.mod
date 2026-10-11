@@ -1,3 +1,3 @@
-module github.com/ZHOUXING1997/collection
+module github.com/goxstdx/go-collection
 
 go 1.27

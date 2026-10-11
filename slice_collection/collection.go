@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ZHOUXING1997/collection/errorx"
+	"github.com/goxstdx/go-collection/errorx"
 )
 
 // basicOrderedCmp 返回预声明有序类型的比较函数。

@@ -32,7 +32,7 @@ push_pkg:
 	go list -m all
 
 	@echo "推送至 https://pkg.go.dev/..."
-	go list -m github.com/ZHOUXING1997/collection@$(TAG_NAME)
+	go list -m github.com/goxstdx/go-collection@$(TAG_NAME)
 
 .PHONY: help
 help:
