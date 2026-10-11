@@ -1,11 +1,56 @@
-.temp
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# editor
 .idea/
-/.junie/
-/.cunzhi-memory/
 
-**/.DS_Store
+# Test binary, built with `go test -c`
+*.test
 
-.review
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
 
+# Dependency directories (remove the comment below to include it)
+vendor/
+
+# Go workspace file
 go.work
 go.work.sum
+
+# env file
+.env
+
+# temp
+**/tmp/*
+**/.DS_Store
+
+# log
+logs
+logs/*
+
+# local
+/.local
+.gitlab-ci-local.yml
+.golangci.local.yml
+.junie/
+
+/.agent-work
+
+/.agentbridge
+
+# cache
+.cache/
+/test/test_quote/.cache
+
+**/测试结果*
+
+# Agent
+.review
+/.codex/
+/.cursor/
+
+/docs/temp/
