@@ -1,4 +1,7 @@
-// Package slice_collection 提供对泛型切片的链式集合操作。
+// Package slice_collection provides generic, chainable slice collections with filtering,
+// mapping, sorting, grouping, and aggregation.
+//
+// 提供对泛型切片的链式集合操作。
 //
 // 增删改和重新排序直接修改当前集合：Append、Push、Pop、Remove、Insert、Prepend、SetIndex、FromJson，以及 Sort、SortDesc、SortBy、SortByDesc、SortByFunc、Reverse、Shuffle。
 // 需要保留原内容时，先 Copy 再调用。

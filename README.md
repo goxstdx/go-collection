@@ -4,6 +4,46 @@ Collection 是一个 Go 泛型集合库，为切片（Slice）和 Map 提供常�
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/goxstdx/go-collection.svg)](https://pkg.go.dev/github.com/goxstdx/go-collection)
 
+## Overview
+
+Collection is a Go library for generic, chainable slice and map operations: filtering, mapping, sorting, grouping, and aggregation. Callbacks provide typed comparisons and value extraction without field-name reflection. Mapping can change the element type, and the `map_collection` package also provides a concurrency-safe `SafeCollection`.
+
+### Quick start
+
+Requires Go 1.27 or later.
+
+```bash
+go get github.com/goxstdx/go-collection@v0.1.1
+```
+
+```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/goxstdx/go-collection"
+)
+
+func main() {
+    numbers := collection.NewSliceCollect([]int{1, 2, 3, 4, 5})
+    labels := numbers.Filter(func(n int, _ int) bool {
+        return n > 2
+    }).Map(func(n int, _ int) string {
+        return fmt.Sprintf("item-%d", n)
+    })
+    fmt.Println(labels.Values()) // [item-3 item-4 item-5]
+
+    scores := collection.NewMapCollect(map[string]int{"alice": 80, "bob": 95})
+    passed := scores.Filter(func(score int, _ string) bool {
+        return score >= 90
+    })
+    fmt.Println(passed.Count()) // 1
+}
+```
+
+See the [API guide](docs/guide/api.md) for all operations and mutation rules. Chinese documentation follows below.
+
 ## 简介
 
 Collection 提供过滤、映射、查找、排序、分组和数值聚合等操作，支持基本类型和结构体类型。通过泛型和调用方传入的函数完成类型转换、比较及取值，并提供线程安全的 Map 集合。

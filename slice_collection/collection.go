@@ -1,4 +1,5 @@
-// Package slice_collection 提供针对泛型切片的链式集合操作。
+// Package slice_collection provides generic, chainable slice collections with filtering,
+// mapping, sorting, grouping, and aggregation.
 //
 // 提供过滤、映射、排序、查找、聚合、分组、分页、序列化等常见操作，
 // 旨在在不追求极致性能的业务场景下提升开发效率。
