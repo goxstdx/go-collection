@@ -7,7 +7,7 @@ import (
 	"github.com/goxstdx/go-collection/errorx"
 )
 
-// TestNewMapCollect_Basic 测试基本功能
+// TestNewMapCollect_Basic tests the basic behavior.
 func TestNewMapCollect_Basic(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	c := NewMapCollect(m)
@@ -80,7 +80,7 @@ func TestNewMapCollect_MinByKeyAndValue(t *testing.T) {
 	}
 }
 
-// TestNewMapCollect_EmptyMap 测试空map
+// TestNewMapCollect_EmptyMap tests an empty map.
 func TestNewMapCollect_EmptyMap(t *testing.T) {
 	m := map[string]int{}
 	c := NewMapCollect(m)
@@ -103,7 +103,7 @@ func TestNewMapCollect_EmptyMap(t *testing.T) {
 	}
 }
 
-// TestNewMapCollect_NilMap 测试nil map
+// TestNewMapCollect_NilMap tests a nil map.
 func TestNewMapCollect_NilMap(t *testing.T) {
 	var m map[string]int
 	c := NewMapCollect(m)
@@ -117,7 +117,7 @@ func TestNewMapCollect_NilMap(t *testing.T) {
 	}
 }
 
-// TestNewMapCollect_LargeMap 测试大量数据
+// TestNewMapCollect_LargeMap tests a large amount of data.
 func TestNewMapCollect_LargeMap(t *testing.T) {
 	m := make(map[int]int, 10000)
 	for i := 0; i < 10000; i++ {
@@ -144,12 +144,12 @@ func TestNewMapCollect_LargeMap(t *testing.T) {
 	}
 }
 
-// TestNewMapCollect_WithoutCompare 测试创建时不传入比较函数
+// TestNewMapCollect_WithoutCompare tests creation without a comparison function.
 func TestNewMapCollect_WithoutCompare(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2}
 	c := NewMapCollect(m)
 
-	// 创建时不排序
+	// Nothing is sorted at creation time.
 	if c.Count() != 2 {
 		t.Errorf("Expected count 2, got %d", c.Count())
 	}
@@ -158,7 +158,7 @@ func TestNewMapCollect_WithoutCompare(t *testing.T) {
 func TestNewMapCollect_DescendingOrder(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	c := NewMapCollect(m)
-	// 比较函数反过来时，MinBy 取到最大的 key。
+	// With a reversed comparison function, MinBy returns the greatest key.
 	k, v, err := c.MinBy(func(a string, _ int, b string, _ int) int {
 		if a < b {
 			return 1
@@ -184,10 +184,10 @@ func TestNewMapCollect_DescendingOrder(t *testing.T) {
 	}
 }
 
-// TestNewMapCollect_DuplicateKeys 测试重复的key(map本身不允许,但测试数据完整性)
+// TestNewMapCollect_DuplicateKeys tests duplicate keys (a map cannot hold them) and checks that the data stays intact.
 func TestNewMapCollect_DuplicateKeys(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2}
-	m["a"] = 10 // 覆盖
+	m["a"] = 10 // overwrite
 
 	c := NewMapCollect(m)
 
@@ -199,7 +199,7 @@ func TestNewMapCollect_DuplicateKeys(t *testing.T) {
 	}
 }
 
-// TestNewEmptyMapCollection 测试空集合创建
+// TestNewEmptyMapCollection tests creating an empty collection.
 func TestNewEmptyMapCollection(t *testing.T) {
 	c := NewEmptyMapCollection[string, int]()
 
@@ -214,7 +214,7 @@ func TestNewEmptyMapCollection(t *testing.T) {
 	}
 }
 
-// TestNewEmptyMapCollection_AddData 测试空集合添加数据
+// TestNewEmptyMapCollection_AddData tests adding data to an empty collection.
 func TestNewEmptyMapCollection_AddData(t *testing.T) {
 	c := NewEmptyMapCollection[string, int]()
 	c.Set("a", 1).Set("b", 2)
@@ -227,7 +227,7 @@ func TestNewEmptyMapCollection_AddData(t *testing.T) {
 	}
 }
 
-// TestNewMapCollect_StructKey 测试结构体作为key
+// TestNewMapCollect_StructKey tests a struct used as a key.
 func TestNewMapCollect_StructKey(t *testing.T) {
 	type Key struct {
 		ID int
@@ -251,7 +251,7 @@ func TestNewMapCollect_StructKey(t *testing.T) {
 	}
 }
 
-// TestNewMapCollect_PointerValue 测试指针类型的value
+// TestNewMapCollect_PointerValue tests a pointer value.
 func TestNewMapCollect_PointerValue(t *testing.T) {
 	type Person struct {
 		Name string

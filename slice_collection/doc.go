@@ -1,14 +1,20 @@
 // Package slice_collection provides generic, chainable slice collections with filtering,
 // mapping, sorting, grouping, and aggregation.
 //
-// 提供对泛型切片的链式集合操作。
+// It provides chainable collection operations over generic slices.
 //
-// 增删改和重新排序直接修改当前集合：Append、Push、Pop、Remove、Insert、Prepend、SetIndex、FromJson，以及 Sort、SortDesc、SortBy、SortByDesc、SortByFunc、Reverse、Shuffle。
-// 需要保留原内容时，先 Copy 再调用。
-// 查询和转换返回新集合。Slice、ForPage、Split 复制元素，不和原集合共用底层数组。
-// NewCollection 不复制传入的切片，Values 返回内部切片，两者和调用方共用底层数组。
+// Inserts, deletes, updates, and reordering mutate the current collection: Append, Push, Pop,
+// Remove, Insert, Prepend, SetIndex, FromJson, and Sort, SortDesc, SortBy, SortByDesc,
+// SortByFunc, Reverse, Shuffle.
+// Call Copy first when the original contents must be kept.
+// Queries and transformations return a new collection. Slice, ForPage, and Split copy elements
+// and do not share the backing array with the original collection.
+// NewCollection does not copy the input slice, and Values returns the internal slice, so both
+// share the backing array with the caller.
 //
-// int、uint、float32、float64、string 在 Sort、Max、Contains 等方法调用时生成比较函数。
-// 结构体和定义类型必须把比较函数传给对应的 By 方法。
-// Min、Max、Mode 在空集合上返回 errorx.EmptyError，零值只在 err 为 nil 时有效。
+// int, uint, float32, float64, and string get a comparison function when methods such as Sort,
+// Max, and Contains are called.
+// Structs and defined types must pass a comparison function to the corresponding By method.
+// Min, Max, and Mode return errorx.EmptyError on an empty collection. The zero value is valid
+// only when err is nil.
 package slice_collection

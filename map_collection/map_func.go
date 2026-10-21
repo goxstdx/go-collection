@@ -1,19 +1,19 @@
 package map_collection
 
-// 本文件提供一组针对泛型 map 的辅助方法，参考 Laravel Collection 的常见能力，
-// 但以 Go 原生泛型与标准库 maps 包为基础实现，保持简洁与实用。
+// This file provides helpers for generic maps, modeled on common Laravel Collection
+// operations and implemented with Go generics and the standard maps package.
 //
-// 说明：
-// - 这些函数均为纯函数（除 InPlace 结尾者外），不会修改传入的原始 map，
-//   会返回一个新的 map 或结果值。
-// - Go 的 map 无序，这里未提供与顺序相关的 API。
-// - 优先使用 Go 1.27+ 的标准库 maps 包（Keys/Values/Clone/Equal/Copy）。
+// Notes:
+//   - These functions are pure (except those whose names end in InPlace). They do not
+//     modify the input map, and they return a new map or a result value.
+//   - Go maps are unordered, so no order-related API is provided here.
+//   - Prefer the Go 1.27+ standard maps package (Keys, Values, Clone, Equal, Copy).
 
 import (
 	"maps"
 )
 
-// Keys 返回 map 的所有键。
+// Keys returns all keys of the map.
 func Keys[M ~map[K]V, K comparable, V any](m M) []K {
 	res := make([]K, 0, len(m))
 	for k := range m {
@@ -23,7 +23,7 @@ func Keys[M ~map[K]V, K comparable, V any](m M) []K {
 	return res
 }
 
-// Values 返回 map 的所有值。
+// Values returns all values of the map.
 func Values[M ~map[K]V, K comparable, V any](m M) []V {
 	res := make([]V, 0, len(m))
 	for _, v := range m {
@@ -32,28 +32,28 @@ func Values[M ~map[K]V, K comparable, V any](m M) []V {
 	return res
 }
 
-// Clone 返回一个 m 的拷贝。
+// Clone returns a copy of m.
 func Clone[M ~map[K]V, K comparable, V any](m M) M {
 	return maps.Clone(m)
 }
 
-// Equal 比较两个 map 是否相等（键和值逐一相等）。
+// Equal reports whether two maps are equal (keys and values match one by one).
 func Equal[M1 ~map[K]V, M2 ~map[K]V, K comparable, V comparable](m1 M1, m2 M2) bool {
 	return maps.Equal(m1, m2)
 }
 
-// Has 判断 key 是否在 map 中。
+// Has reports whether key is present in the map.
 func Has[M ~map[K]V, K comparable, V any](m M, key K) bool {
 	_, ok := m[key]
 	return ok
 }
 
-// Get 获取 key 对应的值；如果不存在，则返回零值。
+// Get returns the value for key, or the zero value if it is absent.
 func Get[M ~map[K]V, K comparable, V any](m M, key K) V {
 	return m[key]
 }
 
-// GetOr 获取 key 对应的值；如果不存在，返回默认值 def。
+// GetOr returns the value for key, or def if it is absent.
 func GetOr[M ~map[K]V, K comparable, V any](m M, key K, def V) V {
 	if v, ok := m[key]; ok {
 		return v
@@ -61,7 +61,7 @@ func GetOr[M ~map[K]V, K comparable, V any](m M, key K, def V) V {
 	return def
 }
 
-// Set 返回设置了 key->val 后的新 map（不修改原 map）。
+// Set returns a new map with key set to val. It does not modify the original map.
 func Set[M ~map[K]V, K comparable, V any](m M, key K, val V) M {
 	nm := maps.Clone(m)
 	if nm == nil {
@@ -71,26 +71,27 @@ func Set[M ~map[K]V, K comparable, V any](m M, key K, val V) M {
 	return nm
 }
 
-// SetInPlace 直接在原 map 上设置 key->val。
+// SetInPlace sets key to val on the original map.
 func SetInPlace[M ~map[K]V, K comparable, V any](m M, key K, val V) {
 	m[key] = val
 }
 
-// Delete 返回删除 key 后的新 map（不修改原 map）。
+// Delete returns a new map with key removed. It does not modify the original map.
 func Delete[M ~map[K]V, K comparable, V any](m M, key K) M {
 	nm := maps.Clone(m)
 	delete(nm, key)
 	return nm
 }
 
-// DeleteInPlace 直接在原 map 上删除 key。
+// DeleteInPlace deletes key from the original map.
 func DeleteInPlace[M ~map[K]V, K comparable, V any](m M, key K) {
 	delete(m, key)
 }
 
-// Merge 返回一个新 map，包含 m 与 other 的所有键值，若键冲突则以 other 为准。
+// Merge returns a new map containing every entry from m and other.
+// On a key conflict, other wins.
 func Merge[M ~map[K]V, K comparable, V any](m M, other M) M {
-	// 两边都为 nil 时返回空 map 而非 nil，避免调用方后续写入 panic。
+	// Both nil: return an empty map rather than nil, so a later write does not panic.
 	if m == nil && other == nil {
 		return make(M)
 	}
@@ -102,12 +103,12 @@ func Merge[M ~map[K]V, K comparable, V any](m M, other M) M {
 	return nm
 }
 
-// MergeInPlace 将 other 的键值合并进 m，键冲突以 other 为准。
+// MergeInPlace merges other's entries into m. On a key conflict, other wins.
 func MergeInPlace[M ~map[K]V, K comparable, V any](m M, other M) {
 	maps.Copy(m, other)
 }
 
-// Only 仅保留 keys 中出现的键，返回新 map。
+// Only keeps only the keys listed in keys and returns a new map.
 func Only[M ~map[K]V, K comparable, V any](m M, keys []K) M {
 	nm := make(M, len(keys))
 	for _, k := range keys {
@@ -118,9 +119,9 @@ func Only[M ~map[K]V, K comparable, V any](m M, keys []K) M {
 	return nm
 }
 
-// Except 排除 keys 中出现的键，返回新 map（不修改原 map）。
+// Except drops the keys listed in keys and returns a new map. It does not modify the original map.
 func Except[M ~map[K]V, K comparable, V any](m M, keys []K) M {
-	// 输入为空时返回空 map 而非 nil，避免调用方在结果上写入 panic。
+	// An empty input returns an empty map rather than nil, so a later write on the result does not panic.
 	if len(m) == 0 {
 		return make(M)
 	}
@@ -131,7 +132,7 @@ func Except[M ~map[K]V, K comparable, V any](m M, keys []K) M {
 	return nm
 }
 
-// MapValues 对值进行映射，保留原键，返回新 map。
+// MapValues maps values, keeps the original keys, and returns a new map.
 func MapValues[M ~map[K]V, K comparable, V any, R any](m M, fn func(value V, key K) R) map[K]R {
 	res := make(map[K]R, len(m))
 	for k, v := range m {
@@ -140,7 +141,8 @@ func MapValues[M ~map[K]V, K comparable, V any, R any](m M, fn func(value V, key
 	return res
 }
 
-// MapKeys 对键进行映射（可能改变键类型），返回新 map；若映射过程中出现键冲突，后者覆盖前者。
+// MapKeys maps keys and may change the key type. It returns a new map.
+// If two keys map to the same new key, the later one overwrites the earlier one.
 func MapKeys[M ~map[K]V, K comparable, V any, NK comparable](m M, fn func(key K, value V) NK) map[NK]V {
 	res := make(map[NK]V, len(m))
 	for k, v := range m {
@@ -149,7 +151,7 @@ func MapKeys[M ~map[K]V, K comparable, V any, NK comparable](m M, fn func(key K,
 	return res
 }
 
-// Filter 过滤键值对，返回新 map。
+// Filter filters key-value pairs and returns a new map.
 func Filter[M ~map[K]V, K comparable, V any](m M, fn func(value V, key K) bool) M {
 	nm := make(M)
 	for k, v := range m {
@@ -160,7 +162,7 @@ func Filter[M ~map[K]V, K comparable, V any](m M, fn func(value V, key K) bool) 
 	return nm
 }
 
-// Each 按 map 自身顺序遍历，fn 返回 false 时终止遍历。
+// Each walks the map in its own order and stops when fn returns false.
 func Each[M ~map[K]V, K comparable, V any](m M, fn func(value V, key K) bool) {
 	for k, v := range m {
 		if !fn(v, k) {
@@ -169,14 +171,14 @@ func Each[M ~map[K]V, K comparable, V any](m M, fn func(value V, key K) bool) {
 	}
 }
 
-// Foreach 对每个键值对执行一次回调，顺序不确定。
+// Foreach calls fn once for every key-value pair. Order is not specified.
 func Foreach[M ~map[K]V, K comparable, V any](m M, fn func(value V, key K)) {
 	for k, v := range m {
 		fn(v, k)
 	}
 }
 
-// Reduce 聚合：将 map 折叠为一个结果。
+// Reduce folds the map into a single result.
 func Reduce[M ~map[K]V, K comparable, V any, R any](m M, init R, fn func(acc R, value V, key K) R) R {
 	acc := init
 	for k, v := range m {
@@ -185,7 +187,7 @@ func Reduce[M ~map[K]V, K comparable, V any, R any](m M, init R, fn func(acc R, 
 	return acc
 }
 
-// Pluck 用 fn 从 map 的每个 value 取出一个值。遍历顺序不稳定。
+// Pluck uses fn to take one value from each map value. Iteration order is not stable.
 func Pluck[M ~map[K]V, K comparable, V any, R any](m M, fn func(V) R) []R {
 	result := make([]R, 0, len(m))
 	for _, v := range m {

@@ -47,7 +47,7 @@ func TestFuncClone(t *testing.T) {
 		t.Error("Clone did not copy correctly")
 	}
 
-	// 修改克隆不应影响原map
+	// Changing the clone must not affect the original map.
 	cloned["d"] = 4
 	if len(m) == len(cloned) {
 		t.Error("Clone should create independent map")
@@ -87,7 +87,7 @@ func TestFuncGet(t *testing.T) {
 		t.Error("Get returned wrong value")
 	}
 
-	// 获取不存在的key应返回零值
+	// A missing key should return the zero value.
 	if map_collection.Get(m, "d") != 0 {
 		t.Error("Get should return zero value for non-existent key")
 	}
@@ -109,12 +109,12 @@ func TestFuncSet(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2}
 	newM := map_collection.Set(m, "c", 3)
 
-	// 原map不应改变
+	// The original map must not change.
 	if len(m) != 2 {
 		t.Error("Set should not modify original map")
 	}
 
-	// 新map应包含新值
+	// The new map should contain the new value.
 	if len(newM) != 3 || newM["c"] != 3 {
 		t.Error("Set did not create correct new map")
 	}
@@ -124,7 +124,7 @@ func TestFuncSetInPlace(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2}
 	map_collection.SetInPlace(m, "c", 3)
 
-	// 应修改原map
+	// The original map should be modified.
 	if len(m) != 3 || m["c"] != 3 {
 		t.Error("SetInPlace did not modify map correctly")
 	}
@@ -134,12 +134,12 @@ func TestFuncDelete(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	newM := map_collection.Delete(m, "b")
 
-	// 原map不应改变
+	// The original map must not change.
 	if len(m) != 3 {
 		t.Error("Delete should not modify original map")
 	}
 
-	// 新map应删除指定key
+	// The new map should have the given key removed.
 	if len(newM) != 2 || newM["b"] != 0 {
 		t.Error("Delete did not remove key correctly")
 	}
@@ -149,7 +149,7 @@ func TestFuncDeleteInPlace(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	map_collection.DeleteInPlace(m, "b")
 
-	// 应修改原map
+	// The original map should be modified.
 	if len(m) != 2 || m["b"] != 0 {
 		t.Error("DeleteInPlace did not remove key correctly")
 	}
@@ -160,12 +160,12 @@ func TestFuncMerge(t *testing.T) {
 	m2 := map[string]int{"b": 20, "c": 3}
 	merged := map_collection.Merge(m1, m2)
 
-	// 原map不应改变
+	// The original map must not change.
 	if len(m1) != 2 {
 		t.Error("Merge should not modify original maps")
 	}
 
-	// 合并后的map应包含所有键，冲突时以m2为准
+	// The merged map should contain every key. On a conflict, m2 wins.
 	if len(merged) != 3 || merged["b"] != 20 || merged["c"] != 3 {
 		t.Error("Merge did not merge correctly")
 	}
@@ -176,7 +176,7 @@ func TestFuncMergeInPlace(t *testing.T) {
 	m2 := map[string]int{"b": 20, "c": 3}
 	map_collection.MergeInPlace(m1, m2)
 
-	// 应修改m1
+	// m1 should be modified.
 	if len(m1) != 3 || m1["b"] != 20 || m1["c"] != 3 {
 		t.Error("MergeInPlace did not merge correctly")
 	}
@@ -186,12 +186,12 @@ func TestFuncOnly(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3, "d": 4}
 	result := map_collection.Only(m, []string{"a", "c"})
 
-	// 原map不应改变
+	// The original map must not change.
 	if len(m) != 4 {
 		t.Error("Only should not modify original map")
 	}
 
-	// 结果应只包含指定的key
+	// The result should contain only the given keys.
 	if len(result) != 2 || result["a"] != 1 || result["c"] != 3 {
 		t.Error("Only did not filter correctly")
 	}
@@ -201,12 +201,12 @@ func TestFuncExcept(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3, "d": 4}
 	result := map_collection.Except(m, []string{"b", "d"})
 
-	// 原map不应改变
+	// The original map must not change.
 	if len(m) != 4 {
 		t.Error("Except should not modify original map")
 	}
 
-	// 结果应排除指定的key
+	// The result should exclude the given keys.
 	if len(result) != 2 || result["a"] != 1 || result["c"] != 3 {
 		t.Error("Except did not filter correctly")
 	}
@@ -218,12 +218,12 @@ func TestMapValues(t *testing.T) {
 		return v * 2
 	})
 
-	// 原map不应改变
+	// The original map must not change.
 	if m["a"] != 1 {
 		t.Error("MapValues should not modify original map")
 	}
 
-	// 结果的值应翻倍
+	// Values in the result should be doubled.
 	if result["a"] != 2 || result["b"] != 4 || result["c"] != 6 {
 		t.Error("MapValues did not transform values correctly")
 	}
@@ -235,12 +235,12 @@ func TestMapKeys(t *testing.T) {
 		return k + "_new"
 	})
 
-	// 原map不应改变
+	// The original map must not change.
 	if len(m) != 3 {
 		t.Error("MapKeys should not modify original map")
 	}
 
-	// 结果应有新的key
+	// The result should have the new keys.
 	if result["a_new"] != 1 || result["b_new"] != 2 || result["c_new"] != 3 {
 		t.Error("MapKeys did not transform keys correctly")
 	}
@@ -252,12 +252,12 @@ func TestFuncFilter(t *testing.T) {
 		return v%2 == 0
 	})
 
-	// 原map不应改变
+	// The original map must not change.
 	if len(m) != 4 {
 		t.Error("Filter should not modify original map")
 	}
 
-	// 结果应只包含偶数值
+	// The result should contain only even values.
 	if len(result) != 2 || result["b"] != 2 || result["d"] != 4 {
 		t.Error("Filter did not filter correctly")
 	}
@@ -288,13 +288,13 @@ func TestFuncReduce(t *testing.T) {
 		t.Errorf("Reduce did not calculate correctly, expected 6, got %d", sum)
 	}
 
-	// 测试字符串拼接
+	// Test string concatenation.
 	m2 := map[int]string{1: "a", 2: "b", 3: "c"}
 	concat := map_collection.Reduce(m2, "", func(acc string, v string, k int) string {
 		return acc + v
 	})
 
-	// 结果应包含所有字符（顺序不确定）
+	// The result should contain every character (order is not specified).
 	if len(concat) != 3 {
 		t.Errorf("Reduce string concat failed, expected length 3, got %d", len(concat))
 	}
@@ -318,7 +318,7 @@ func TestFuncPluck(t *testing.T) {
 		t.Errorf("Pluck returned wrong number of items: %d", len(names))
 	}
 
-	// 验证是否包含所有名字
+	// Check that every name is present.
 	nameMap := make(map[string]bool)
 	for _, name := range names {
 		nameMap[name] = true
@@ -328,7 +328,7 @@ func TestFuncPluck(t *testing.T) {
 		t.Error("Pluck did not extract all names correctly")
 	}
 
-	// 测试提取Age
+	// Test extracting Age.
 	ages := map_collection.Pluck(m, func(p TestPerson) int { return p.Age })
 	if len(ages) != 3 {
 		t.Errorf("Pluck Age returned wrong number of items: %d", len(ages))
@@ -348,7 +348,7 @@ func TestPluckWithPointer(t *testing.T) {
 	m := map[string]*TestPerson{
 		"p1": {Name: "Alice", Age: 30},
 		"p2": {Name: "Bob", Age: 25},
-		"p3": nil, // 测试nil指针
+		"p3": nil, // nil pointer
 	}
 
 	names := map_collection.Pluck(m, func(p *TestPerson) string {
@@ -358,7 +358,7 @@ func TestPluckWithPointer(t *testing.T) {
 		return p.Name
 	})
 
-	// 应该包含2个有效名字
+	// It should contain two valid names.
 	validNames := 0
 	for _, name := range names {
 		if name != "" {

@@ -657,7 +657,7 @@ func TestReverse(t *testing.T) {
 // TestShuffle tests the Shuffle method of the Collection struct
 func TestShuffle(t *testing.T) {
 	coll := NewCollection([]int{1, 2, 3})
-	// Shuffle 会改原集合，先留下未打乱的副本再比较。
+	// Shuffle mutates the original collection, so keep an unshuffled copy before comparing.
 	original := coll.Copy()
 
 	shuffledColl := coll.Shuffle()
@@ -736,7 +736,7 @@ func TestDD(t *testing.T) {
 	// the DD method should not return anything, so there is nothing to check
 }
 
-// TestPluckFieldString 用函数取出字符串字段。
+// TestPluckFieldString takes a string field with a function.
 type Person struct {
 	Name string
 	Age  string
@@ -923,7 +923,7 @@ func TestSortBy(t *testing.T) {
 	}
 }
 
-// TestSortByParsedFloat 先把字符串解析成 float64，再交给 SortBy。
+// TestSortByParsedFloat parses strings to float64 and then passes them to SortBy.
 func TestSortByParsedFloat(t *testing.T) {
 	// create a new Collection with some elements
 	type T struct {

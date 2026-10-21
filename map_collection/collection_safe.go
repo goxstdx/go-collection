@@ -1,6 +1,6 @@
 package map_collection
 
-// Copy 返回一个新的线程安全的 Collection 副本
+// Copy returns a new concurrency-safe copy of the Collection.
 func (sc *SafeCollection[K, V]) Copy() *SafeCollection[K, V] {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -10,7 +10,7 @@ func (sc *SafeCollection[K, V]) Copy() *SafeCollection[K, V] {
 	}
 }
 
-// IsEmpty 判断是否为空
+// IsEmpty reports whether the collection is empty.
 func (sc *SafeCollection[K, V]) IsEmpty() bool {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -18,7 +18,7 @@ func (sc *SafeCollection[K, V]) IsEmpty() bool {
 	return sc.coll.IsEmpty()
 }
 
-// IsNotEmpty 判断是否不为空
+// IsNotEmpty reports whether the collection is not empty.
 func (sc *SafeCollection[K, V]) IsNotEmpty() bool {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -26,7 +26,7 @@ func (sc *SafeCollection[K, V]) IsNotEmpty() bool {
 	return sc.coll.IsNotEmpty()
 }
 
-// Count 返回元素数量
+// Count returns the number of elements.
 func (sc *SafeCollection[K, V]) Count() int {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -34,7 +34,7 @@ func (sc *SafeCollection[K, V]) Count() int {
 	return sc.coll.Count()
 }
 
-// Keys 返回所有 key 的切片
+// Keys returns a slice of all keys.
 func (sc *SafeCollection[K, V]) Keys() []K {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -42,7 +42,7 @@ func (sc *SafeCollection[K, V]) Keys() []K {
 	return sc.coll.Keys()
 }
 
-// Values 返回所有 value 的切片
+// Values returns a slice of all values.
 func (sc *SafeCollection[K, V]) Values() []V {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -50,7 +50,7 @@ func (sc *SafeCollection[K, V]) Values() []V {
 	return sc.coll.Values()
 }
 
-// GetValue 获取指定 key 的值，如果不存在返回零值
+// GetValue returns the value for key, or the zero value if it is absent.
 func (sc *SafeCollection[K, V]) GetValue(key K) V {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -58,7 +58,7 @@ func (sc *SafeCollection[K, V]) GetValue(key K) V {
 	return sc.coll.GetValue(key)
 }
 
-// Get 获取指定 key 的值，返回值和是否存在的标志
+// Get returns the value for key and whether it exists.
 func (sc *SafeCollection[K, V]) Get(key K) (V, bool) {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -66,7 +66,7 @@ func (sc *SafeCollection[K, V]) Get(key K) (V, bool) {
 	return sc.coll.Get(key)
 }
 
-// GetOr 获取 key 对应的值；如果不存在，返回默认值
+// GetOr returns the value for key, or the default if it is absent.
 func (sc *SafeCollection[K, V]) GetOr(key K, def V) V {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -74,7 +74,7 @@ func (sc *SafeCollection[K, V]) GetOr(key K, def V) V {
 	return sc.coll.GetOr(key, def)
 }
 
-// Has 判断是否存在指定的 key
+// Has reports whether key exists.
 func (sc *SafeCollection[K, V]) Has(key K) bool {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -82,7 +82,7 @@ func (sc *SafeCollection[K, V]) Has(key K) bool {
 	return sc.coll.Has(key)
 }
 
-// Set 设置 key->val（直接修改当前 Collection）
+// Set sets key to val. It mutates the current Collection.
 func (sc *SafeCollection[K, V]) Set(key K, val V) *SafeCollection[K, V] {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -91,7 +91,7 @@ func (sc *SafeCollection[K, V]) Set(key K, val V) *SafeCollection[K, V] {
 	return sc
 }
 
-// Put 设置 key->val（返回新的线程安全 Collection）
+// Put sets key to val and returns a new concurrency-safe Collection.
 func (sc *SafeCollection[K, V]) Put(key K, val V) *SafeCollection[K, V] {
 	sc.mu.RLock()
 	newColl := sc.coll.Put(key, val)
@@ -102,7 +102,7 @@ func (sc *SafeCollection[K, V]) Put(key K, val V) *SafeCollection[K, V] {
 	}
 }
 
-// Delete 删除指定的 key（返回新的线程安全 Collection）
+// Delete removes key and returns a new concurrency-safe Collection.
 func (sc *SafeCollection[K, V]) Delete(key K) *SafeCollection[K, V] {
 	sc.mu.RLock()
 	newColl := sc.coll.Delete(key)
@@ -113,10 +113,10 @@ func (sc *SafeCollection[K, V]) Delete(key K) *SafeCollection[K, V] {
 	}
 }
 
-// DeleteByFunc 删除满足条件的 key（返回新的线程安全 Collection）
+// DeleteByFunc removes keys that match the condition and returns a new concurrency-safe Collection.
 func (sc *SafeCollection[K, V]) DeleteByFunc(fn func(K, V) bool) *SafeCollection[K, V] {
 	sc.mu.RLock()
-	// 回调 panic 时也要释放读锁，避免 recover 后的写操作阻塞。
+	// Release the read lock even if the callback panics, so a later write is not blocked after recover.
 	defer sc.mu.RUnlock()
 	newColl := sc.coll.DeleteByFunc(fn)
 
@@ -125,7 +125,7 @@ func (sc *SafeCollection[K, V]) DeleteByFunc(fn func(K, V) bool) *SafeCollection
 	}
 }
 
-// Remove 删除指定的 key（直接修改当前 Collection）
+// Remove deletes key. It mutates the current Collection.
 func (sc *SafeCollection[K, V]) Remove(key K) *SafeCollection[K, V] {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -134,7 +134,7 @@ func (sc *SafeCollection[K, V]) Remove(key K) *SafeCollection[K, V] {
 	return sc
 }
 
-// Merge 合并另一个 map（返回新的线程安全 Collection）
+// Merge merges another map and returns a new concurrency-safe Collection.
 func (sc *SafeCollection[K, V]) Merge(other map[K]V) *SafeCollection[K, V] {
 	sc.mu.RLock()
 	newColl := sc.coll.Merge(other)
@@ -145,14 +145,15 @@ func (sc *SafeCollection[K, V]) Merge(other map[K]V) *SafeCollection[K, V] {
 	}
 }
 
-// MergeCollection 合并另一个 SafeCollection（返回新的线程安全 Collection）
+// MergeCollection merges another SafeCollection and returns a new concurrency-safe Collection.
 func (sc *SafeCollection[K, V]) MergeCollection(other *SafeCollection[K, V]) *SafeCollection[K, V] {
 	if other == nil {
 		return sc.Copy()
 	}
 
-	// 先取 other 的副本再锁自己，同一时刻只持有一把锁。
-	// 同时持有两把读锁时，a、b 互相合并或自己合并自己，遇到排队的写操作会死锁。
+	// Copy other before locking this collection, so only one lock is held at a time.
+	// Holding both read locks can deadlock when a and b merge each other, or a collection
+	// merges itself, if a write is already queued.
 	otherMap := other.All()
 
 	sc.mu.RLock()
@@ -164,7 +165,7 @@ func (sc *SafeCollection[K, V]) MergeCollection(other *SafeCollection[K, V]) *Sa
 	}
 }
 
-// MergeInPlace 将另一个 map 合并到当前 Collection（直接修改）
+// MergeInPlace merges another map into the current Collection. It mutates the collection.
 func (sc *SafeCollection[K, V]) MergeInPlace(other map[K]V) *SafeCollection[K, V] {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -173,10 +174,10 @@ func (sc *SafeCollection[K, V]) MergeInPlace(other map[K]V) *SafeCollection[K, V
 	return sc
 }
 
-// Filter 过滤元素（返回新的线程安全 Collection）
+// Filter filters elements and returns a new concurrency-safe Collection.
 func (sc *SafeCollection[K, V]) Filter(fn func(V, K) bool) *SafeCollection[K, V] {
 	sc.mu.RLock()
-	// 回调 panic 时也要释放读锁，避免 recover 后的写操作阻塞。
+	// Release the read lock even if the callback panics, so a later write is not blocked after recover.
 	defer sc.mu.RUnlock()
 	newColl := sc.coll.Filter(fn)
 
@@ -185,10 +186,10 @@ func (sc *SafeCollection[K, V]) Filter(fn func(V, K) bool) *SafeCollection[K, V]
 	}
 }
 
-// Map 映射转换，返回新的线程安全 Collection。R 可以与 V 不同。
+// Map maps values and returns a new concurrency-safe Collection. R may differ from V.
 func (sc *SafeCollection[K, V]) Map[R any](fn func(V, K) R) *SafeCollection[K, R] {
 	sc.mu.RLock()
-	// 回调 panic 时也必须释放读锁，避免 recover 后的写操作一直阻塞。
+	// The read lock must be released even if the callback panics, so a later write is not blocked after recover.
 	defer sc.mu.RUnlock()
 	newColl := sc.coll.Map(fn)
 
@@ -197,7 +198,7 @@ func (sc *SafeCollection[K, V]) Map[R any](fn func(V, K) R) *SafeCollection[K, R
 	}
 }
 
-// Each 按 map 自身顺序遍历，顺序不确定。fn 返回 false 时终止遍历。
+// Each walks the map in its own order. Order is not specified. Iteration stops when fn returns false.
 func (sc *SafeCollection[K, V]) Each(fn func(V, K) bool) {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -205,7 +206,8 @@ func (sc *SafeCollection[K, V]) Each(fn func(V, K) bool) {
 	sc.coll.Each(fn)
 }
 
-// Foreach 按 map 自身顺序完整遍历，顺序不确定。要按比较函数的顺序遍历，用 EachSorted。
+// Foreach walks every entry in the map's own order. Order is not specified.
+// Use EachSorted to walk in an order defined by a comparison function.
 func (sc *SafeCollection[K, V]) Foreach(fn func(V, K)) {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -213,7 +215,7 @@ func (sc *SafeCollection[K, V]) Foreach(fn func(V, K)) {
 	sc.coll.Foreach(fn)
 }
 
-// Reduce 将 map 折叠为一个结果。R 由 init 和 fn 决定。
+// Reduce folds the map into a single result. R is decided by init and fn.
 func (sc *SafeCollection[K, V]) Reduce[R any](init R, fn func(R, V, K) R) R {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -221,7 +223,8 @@ func (sc *SafeCollection[K, V]) Reduce[R any](init R, fn func(R, V, K) R) R {
 	return sc.coll.Reduce(init, fn)
 }
 
-// MinBy 返回按 cmp 最小的键值对。每次调用都重新扫描全部元素。
+// MinBy returns the key-value pair that is smallest according to cmp.
+// Every call rescans every element.
 func (sc *SafeCollection[K, V]) MinBy(cmp func(a K, va V, b K, vb V) int) (K, V, error) {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -229,7 +232,8 @@ func (sc *SafeCollection[K, V]) MinBy(cmp func(a K, va V, b K, vb V) int) (K, V,
 	return sc.coll.MinBy(cmp)
 }
 
-// MaxBy 返回按 cmp 最大的键值对。每次调用都重新扫描全部元素。
+// MaxBy returns the key-value pair that is largest according to cmp.
+// Every call rescans every element.
 func (sc *SafeCollection[K, V]) MaxBy(cmp func(a K, va V, b K, vb V) int) (K, V, error) {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -237,7 +241,8 @@ func (sc *SafeCollection[K, V]) MaxBy(cmp func(a K, va V, b K, vb V) int) (K, V,
 	return sc.coll.MaxBy(cmp)
 }
 
-// EachSorted 按 cmp 排序后遍历。每次调用都重新排序，不保存顺序。
+// EachSorted walks entries after sorting them with cmp.
+// Every call sorts again and does not store the order.
 func (sc *SafeCollection[K, V]) EachSorted(cmp func(a K, va V, b K, vb V) int, fn func(V, K)) error {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -245,7 +250,7 @@ func (sc *SafeCollection[K, V]) EachSorted(cmp func(a K, va V, b K, vb V) int, f
 	return sc.coll.EachSorted(cmp, fn)
 }
 
-// All 返回底层 map 的副本。修改返回值不会影响 Collection。
+// All returns a copy of the underlying map. Modifying the result does not affect the Collection.
 func (sc *SafeCollection[K, V]) All() map[K]V {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
@@ -253,7 +258,7 @@ func (sc *SafeCollection[K, V]) All() map[K]V {
 	return Clone(sc.coll.All())
 }
 
-// ToJSON 序列化为 JSON 字符串
+// ToJSON serializes the collection to a JSON string.
 func (sc *SafeCollection[K, V]) ToJSON() (string, error) {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()

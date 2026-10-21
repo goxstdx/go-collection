@@ -5,28 +5,30 @@ import (
 	"github.com/goxstdx/go-collection/slice_collection"
 )
 
-// NewSliceCollect 创建并返回一个新的切片 Collection。
+// NewSliceCollect creates and returns a new slice Collection.
 //
-// 不复制 values。集合和调用方传入的切片共用底层数组。
-// 比较不在创建时决定。int、uint、float、string 在 Sort、Max、Contains 等方法调用时生成比较函数。
-// 结构体和定义类型必须把比较函数传给对应的 By 方法。
+// It does not copy values. The collection and the caller's slice share the same backing array.
+// Comparison is not decided at creation time. int, uint, float, and string get a comparison
+// function when methods such as Sort, Max, and Contains are called.
+// Structs and defined types must pass a comparison function to the corresponding By method.
 func NewSliceCollect[T any](values []T) *slice_collection.Collection[T] {
 	return slice_collection.NewCollection[T](values)
 }
 
-// NewEmptyCollection 返回一个空的Collection
+// NewEmptyCollection returns an empty Collection.
 func NewEmptyCollection[T any]() *slice_collection.Collection[T] {
 	return slice_collection.NewEmptyCollection[T]()
 }
 
-// NewMapCollect 创建并返回一个新的 map Collection 实例。
+// NewMapCollect creates and returns a new map Collection.
 //
-// 不记录 key 顺序。MinBy、MaxBy 每次调用都重新扫描。EachSorted 每次调用都重新排序。
+// It does not record key order. MinBy and MaxBy rescan on every call.
+// EachSorted re-sorts on every call.
 func NewMapCollect[K comparable, V any](values map[K]V) *map_collection.Collection[K, V] {
 	return map_collection.NewCollection[map[K]V, K, V](values)
 }
 
-// NewEmptyMapCollection 返回一个空的 map Collection。
+// NewEmptyMapCollection returns an empty map Collection.
 func NewEmptyMapCollection[K comparable, V any]() *map_collection.Collection[K, V] {
 	return map_collection.NewCollection[map[K]V, K, V](make(map[K]V))
 }

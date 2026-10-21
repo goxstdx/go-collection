@@ -1,2 +1,2 @@
-// Package errorx 定义 collection 相关的错误。
+// Package errorx defines errors used by the collection packages.
 package errorx

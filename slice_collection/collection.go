@@ -1,8 +1,9 @@
 // Package slice_collection provides generic, chainable slice collections with filtering,
 // mapping, sorting, grouping, and aggregation.
 //
-// 提供过滤、映射、排序、查找、聚合、分组、分页、序列化等常见操作，
-// 旨在在不追求极致性能的业务场景下提升开发效率。
+// It covers common operations such as filtering, mapping, sorting, searching,
+// aggregation, grouping, paging, and serialization, aimed at business code that
+// does not need peak performance.
 package slice_collection
 
 import (
@@ -19,9 +20,10 @@ import (
 	"github.com/goxstdx/go-collection/errorx"
 )
 
-// basicOrderedCmp 返回预声明有序类型的比较函数。
-// 结构体和定义类型返回 NoComparableError，调用方必须使用 By 方法。
-// 不缓存在集合上：只读方法会被并发调用，而这里只是一次类型开关。
+// basicOrderedCmp returns a comparison function for predeclared ordered types.
+// Structs and defined types return NoComparableError. The caller must use a By method.
+// The function is not cached on the collection: read-only methods may run concurrently,
+// and this is only a type switch.
 func basicOrderedCmp[T any]() (func(T, T) int, error) {
 	fn := defaultCompare[T]()
 	if fn == nil {
@@ -30,44 +32,45 @@ func basicOrderedCmp[T any]() (func(T, T) int, error) {
 	return fn, nil
 }
 
-// // Err 返回Collection的错误信息
+// // Err returns the Collection error.
 // func (c *Collection[T]) Err() error {
 // 	return c.err
 // }
 //
-// // SetErr 设置Collection的错误信息
+// // SetErr sets the Collection error.
 // func (c *Collection[T]) SetErr(err error) *Collection[T] {
 // 	c.err = err
 // 	return c
 // }
 
-// Copy 复制一个新的Collection
+// Copy returns a new copy of the Collection.
 func (c *Collection[T]) Copy() *Collection[T] {
-	// 深拷贝切片,避免共享底层数组
+	// Deep-copy the slice so the copy does not share the backing array.
 	copied := make([]T, len(c.value))
 	copy(copied, c.value)
 	return NewCollection[T](copied)
 }
 
-// IsEmpty 判断是否为空
+// IsEmpty reports whether the collection is empty.
 func (c *Collection[T]) IsEmpty() bool {
 	return len(c.value) == 0
 }
 
-// IsNotEmpty 判断是否不为空
+// IsNotEmpty reports whether the collection is not empty.
 func (c *Collection[T]) IsNotEmpty() bool {
 	return len(c.value) != 0
 }
 
-// Append 在尾部添加元素，直接修改当前集合。
+// Append adds an element at the end and mutates the current collection.
 func (c *Collection[T]) Append(item T) *Collection[T] {
 	c.value = append(c.value, item)
 	return c
 }
 
-// Remove 删除下标处的元素，直接修改当前集合。下标越界时不修改。
+// Remove deletes the element at index and mutates the current collection.
+// An out-of-range index leaves the collection unchanged.
 func (c *Collection[T]) Remove(index int) *Collection[T] {
-	// 添加边界检查
+	// Bounds check.
 	if index < 0 || index >= len(c.value) {
 		return c
 	}
@@ -75,7 +78,8 @@ func (c *Collection[T]) Remove(index int) *Collection[T] {
 	return c
 }
 
-// Insert 在 index 处插入元素，直接修改当前集合。index 等于长度时追加到末尾，越界时不修改。
+// Insert inserts an element at index and mutates the current collection.
+// An index equal to the length appends. An out-of-range index leaves the collection unchanged.
 func (c *Collection[T]) Insert(index int, item T) *Collection[T] {
 	if index < 0 || index > len(c.value) {
 		return c
@@ -84,7 +88,7 @@ func (c *Collection[T]) Insert(index int, item T) *Collection[T] {
 	return c
 }
 
-// Search 在预声明有序类型中查找元素，返回首次出现的下标。
+// Search looks up an element among predeclared ordered types and returns the index of the first match.
 func (c *Collection[T]) Search(item T) (int, error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -93,7 +97,7 @@ func (c *Collection[T]) Search(item T) (int, error) {
 	return c.searchWith(item, cmpFn)
 }
 
-// SearchBy 用 cmpFn 查找元素。cmpFn 返回 0 表示相等。
+// SearchBy looks up an element with cmpFn. cmpFn returns 0 when the values are equal.
 func (c *Collection[T]) SearchBy(item T, cmpFn func(a, b T) int) (int, error) {
 	if cmpFn == nil {
 		return -1, errorx.NilFunc
@@ -110,7 +114,7 @@ func (c *Collection[T]) searchWith(item T, cmpFn func(a, b T) int) (int, error) 
 	return -1, errorx.NotFoundError
 }
 
-// Unique 对预声明有序类型去重，保留首次出现的元素。
+// Unique removes duplicates from predeclared ordered types and keeps the first occurrence.
 func (c *Collection[T]) Unique() (*Collection[T], error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -119,7 +123,8 @@ func (c *Collection[T]) Unique() (*Collection[T], error) {
 	return c.uniqueWith(cmpFn), nil
 }
 
-// UniqueBy 用 cmpFn 去重。cmpFn 返回 0 表示相等。保留首次出现的元素。
+// UniqueBy removes duplicates with cmpFn. cmpFn returns 0 when the values are equal.
+// The first occurrence is kept.
 func (c *Collection[T]) UniqueBy(cmpFn func(a, b T) int) (*Collection[T], error) {
 	if cmpFn == nil {
 		return nil, errorx.NilFunc
@@ -144,9 +149,9 @@ func (c *Collection[T]) uniqueWith(cmpFn func(a, b T) int) *Collection[T] {
 	return NewCollection(res)
 }
 
-// Filter 过滤
+// Filter keeps elements that match.
 func (c *Collection[T]) Filter(f func(item T, key int) bool) *Collection[T] {
-	// 按照某个方法进行过滤, 保留符合的
+	// Keep elements for which the function returns true.
 	res := make([]T, 0, len(c.value))
 	for i, v := range c.value {
 		if f(v, i) {
@@ -157,7 +162,7 @@ func (c *Collection[T]) Filter(f func(item T, key int) bool) *Collection[T] {
 	return NewCollection[T](res)
 }
 
-// Reject 过滤
+// Reject drops elements that match.
 func (c *Collection[T]) Reject(f func(item T, key int) bool) *Collection[T] {
 	res := make([]T, 0, len(c.value))
 	for i, v := range c.value {
@@ -169,7 +174,7 @@ func (c *Collection[T]) Reject(f func(item T, key int) bool) *Collection[T] {
 	return NewCollection[T](res)
 }
 
-// First 获取第一个元素
+// First returns the first element.
 func (c *Collection[T]) First() T {
 	var zero T
 	if c.IsEmpty() {
@@ -179,7 +184,7 @@ func (c *Collection[T]) First() T {
 	return c.value[0]
 }
 
-// Last 获取最后一个元素
+// Last returns the last element.
 func (c *Collection[T]) Last() T {
 	var zero T
 	if c.IsEmpty() {
@@ -189,8 +194,9 @@ func (c *Collection[T]) Last() T {
 	return c.value[len(c.value)-1]
 }
 
-// Slice 返回 [start, end) 的新集合，复制元素，不和原集合共用底层数组。
-// 只传 start 时取到末尾。
+// Slice returns a new collection for [start, end). Elements are copied and do not
+// share the backing array with the original collection.
+// When only start is passed, the slice runs through the end.
 func (c *Collection[T]) Slice(params ...int) (*Collection[T], error) {
 	if len(params) == 0 {
 		return NewCollection[T](nil), fmt.Errorf("invalid params")
@@ -213,10 +219,10 @@ func (c *Collection[T]) Slice(params ...int) (*Collection[T], error) {
 	return NewCollection(cloneSlice(c.value[start:end])), nil
 }
 
-// Index 获取某个下标
+// Index returns the element at an index.
 func (c *Collection[T]) Index(i int) T {
 
-	// 获取某个下标，对所有Collection生效
+	// Index lookup. Applies to every Collection.
 	var zero T
 	if i < 0 || i >= len(c.value) {
 		return zero
@@ -225,13 +231,14 @@ func (c *Collection[T]) Index(i int) T {
 	return c.value[i]
 }
 
-// SetIndex 设置下标处的元素，直接修改当前集合。下标越界时不修改。
+// SetIndex sets the element at an index and mutates the current collection.
+// An out-of-range index leaves the collection unchanged.
 func (c *Collection[T]) SetIndex(i int, val T) *Collection[T] {
 	// if c.err != nil {
 	// 	return c
 	// }
 
-	// 设置数组的下标为某个值
+	// Set the slice element at this index.
 	if i < 0 || i >= len(c.value) {
 		return c
 	}
@@ -239,15 +246,15 @@ func (c *Collection[T]) SetIndex(i int, val T) *Collection[T] {
 	return c
 }
 
-// Count 获取数组长度
+// Count returns the number of elements.
 func (c *Collection[T]) Count() int {
-	// 获取数组长度，对所有Collection生效
+	// Length of the slice. Applies to every Collection.
 	return len(c.value)
 }
 
-// Merge 合并数组
+// Merge merges another collection.
 func (c *Collection[T]) Merge(arr *Collection[T]) *Collection[T] {
-	// 将两个数组进行合并
+	// Merge the two slices.
 	if arr == nil {
 		return c
 	}
@@ -260,8 +267,8 @@ func (c *Collection[T]) Merge(arr *Collection[T]) *Collection[T] {
 	return res
 }
 
-// Each 遍历
-// 当 f 返回 false 时，终止
+// Each walks the elements.
+// Iteration stops when f returns false.
 func (c *Collection[T]) Each(f func(item T, key int) bool) {
 	for i, v := range c.value {
 		if !f(v, i) {
@@ -270,14 +277,14 @@ func (c *Collection[T]) Each(f func(item T, key int) bool) {
 	}
 }
 
-// Foreach 遍历，能保证每一个元素都被遍历到，内部决定是否跳过
+// Foreach walks every element. The callback decides internally whether to skip work.
 func (c *Collection[T]) Foreach(f func(item T, key int)) {
 	for i, v := range c.value {
 		f(v, i)
 	}
 }
 
-// Map 映射。R 由 f 的返回值决定，可以与 T 不同。
+// Map maps elements. R is decided by f's return value and may differ from T.
 func (c *Collection[T]) Map[R any](f func(item T, key int) R) *Collection[R] {
 	res := make([]R, 0, len(c.value))
 	for i, v := range c.value {
@@ -287,7 +294,7 @@ func (c *Collection[T]) Map[R any](f func(item T, key int) R) *Collection[R] {
 	return NewCollection(res)
 }
 
-// MapFilter 映射并过滤。f 返回 false 的元素会被丢弃。
+// MapFilter maps and filters. Elements for which f returns false are dropped.
 func (c *Collection[T]) MapFilter[R any](f func(item T, key int) (R, bool)) *Collection[R] {
 	res := make([]R, 0, len(c.value))
 	for i, v := range c.value {
@@ -300,7 +307,7 @@ func (c *Collection[T]) MapFilter[R any](f func(item T, key int) (R, bool)) *Col
 	return NewCollection(res)
 }
 
-// Reduce 求和
+// Reduce folds the elements into one value.
 func (c *Collection[T]) Reduce(f func(carry T, item T) T) T {
 	var zero T
 	if c.IsEmpty() {
@@ -314,7 +321,7 @@ func (c *Collection[T]) Reduce(f func(carry T, item T) T) T {
 	return res
 }
 
-// Every 判断是否所有元素都满足条件
+// Every reports whether every element matches the condition.
 func (c *Collection[T]) Every(f func(item T, key int) bool) bool {
 	for i, v := range c.value {
 		if !f(v, i) {
@@ -325,23 +332,23 @@ func (c *Collection[T]) Every(f func(item T, key int) bool) bool {
 	return true
 }
 
-// ForPage 返回该页元素的副本，不和原集合共用底层数组。
+// ForPage returns a copy of the elements on that page. It does not share the backing array with the original collection.
 func (c *Collection[T]) ForPage(page int, perPage int) (*Collection[T], error) {
 	if page <= 0 || perPage <= 0 {
 		return NewCollection[T](nil), fmt.Errorf("invalid page or perPage")
 	}
-	// 先按集合长度判断页码，避免超大 page、perPage 的乘法溢出。
+	// Check the page against the collection length first, so a huge page or perPage cannot overflow the multiplication.
 	if len(c.value) == 0 || page-1 > (len(c.value)-1)/perPage {
 		return NewCollection[T](nil), nil
 	}
 	start := (page - 1) * perPage
-	// 先限制到剩余元素数，再相加，避免页尾下标溢出。
+	// Cap the step at the remaining element count before adding, so the end index cannot overflow.
 	end := start + min(perPage, len(c.value)-start)
 
 	return NewCollection(cloneSlice(c.value[start:end])), nil
 }
 
-// Nth 每隔n个取一个
+// Nth takes every n-th element.
 func (c *Collection[T]) Nth(n int, offset int) (*Collection[T], error) {
 	if n <= 0 {
 		return NewCollection[T](nil), fmt.Errorf("invalid n")
@@ -355,7 +362,7 @@ func (c *Collection[T]) Nth(n int, offset int) (*Collection[T], error) {
 	res := make([]T, 0, (len(c.value)-1-offset)/n+1)
 	for i := offset; i < len(c.value); {
 		res = append(res, c.value[i])
-		// 下一步已越过集合时直接结束，避免 i+n 溢出成负下标。
+		// Stop when the next step would pass the end, so i+n cannot overflow into a negative index.
 		if n >= len(c.value)-i {
 			break
 		}
@@ -365,7 +372,7 @@ func (c *Collection[T]) Nth(n int, offset int) (*Collection[T], error) {
 	return NewCollection[T](res), nil
 }
 
-// Pad 填充
+// Pad pads the collection up to count with def.
 func (c *Collection[T]) Pad(count int, def T) *Collection[T] {
 	if count <= len(c.value) {
 		return c.Copy()
@@ -381,7 +388,8 @@ func (c *Collection[T]) Pad(count int, def T) *Collection[T] {
 	return NewCollection[T](res)
 }
 
-// Pop 弹出并返回最后一个元素，直接修改当前集合。空集合返回零值。
+// Pop removes and returns the last element and mutates the current collection.
+// An empty collection returns the zero value.
 func (c *Collection[T]) Pop() T {
 	var zero T
 	if c.IsEmpty() {
@@ -392,19 +400,19 @@ func (c *Collection[T]) Pop() T {
 	return res
 }
 
-// Push 在尾部添加元素，直接修改当前集合。
+// Push adds an element at the end and mutates the current collection.
 func (c *Collection[T]) Push(item T) *Collection[T] {
 	c.value = append(c.value, item)
 	return c
 }
 
-// Prepend 在头部插入元素，直接修改当前集合。
+// Prepend inserts an element at the front and mutates the current collection.
 func (c *Collection[T]) Prepend(item T) *Collection[T] {
 	c.value = slices.Insert(c.value, 0, item)
 	return c
 }
 
-// Random 随机取一个元素
+// Random returns one element at random.
 func (c *Collection[T]) Random() T {
 	var zero T
 	if c.IsEmpty() {
@@ -414,13 +422,13 @@ func (c *Collection[T]) Random() T {
 	return c.value[random.Intn(len(c.value))]
 }
 
-// Reverse 反转元素顺序，直接修改当前集合。
+// Reverse reverses element order and mutates the current collection.
 func (c *Collection[T]) Reverse() *Collection[T] {
 	slices.Reverse(c.value)
 	return c
 }
 
-// Shuffle 打乱元素顺序，直接修改当前集合。
+// Shuffle shuffles element order and mutates the current collection.
 func (c *Collection[T]) Shuffle() *Collection[T] {
 	rand.Shuffle(
 		len(c.value), func(i, j int) {
@@ -430,7 +438,7 @@ func (c *Collection[T]) Shuffle() *Collection[T] {
 	return c
 }
 
-// GroupBy 按 f 的返回值分组。K 必须可比较。
+// GroupBy groups elements by f's return value. K must be comparable.
 func (c *Collection[T]) GroupBy[K comparable](f func(T, int) K) map[K]*Collection[T] {
 	res := make(map[K]*Collection[T])
 	for i, v := range c.value {
@@ -440,14 +448,14 @@ func (c *Collection[T]) GroupBy[K comparable](f func(T, int) K) map[K]*Collectio
 			group = NewCollection[T](nil)
 			res[key] = group
 		}
-		// 含 NaN 的 key 无法查回，用局部指针操作刚创建的分组。
+		// A key containing NaN cannot be looked up again, so the group just created is updated through the local pointer.
 		group.Push(v)
 	}
 
 	return res
 }
 
-// Split 按 size 分组，每组都是元素副本，不和原集合共用底层数组。
+// Split groups elements by size. Each group is a copy and does not share the backing array with the original collection.
 func (c *Collection[T]) Split(size int) []*Collection[T] {
 	if size <= 0 {
 		return []*Collection[T]{}
@@ -464,7 +472,7 @@ func (c *Collection[T]) Split(size int) []*Collection[T] {
 	return res
 }
 
-// DD 打印出当前数组结构
+// DD prints the current slice structure.
 func (c *Collection[T]) DD() {
 	var zero T
 	ret := fmt.Sprintf("Collection(%d, %T):{\n", c.Count(), zero)
@@ -475,7 +483,7 @@ func (c *Collection[T]) DD() {
 	fmt.Print(ret)
 }
 
-// PluckField 用 fn 从每个元素取出一个值，返回新集合。
+// PluckField uses fn to take one value from each element and returns a new collection.
 func (c *Collection[T]) PluckField[R any](fn func(T) R) *Collection[R] {
 	res := make([]R, 0, len(c.value))
 	for _, v := range c.value {
@@ -485,8 +493,9 @@ func (c *Collection[T]) PluckField[R any](fn func(T) R) *Collection[R] {
 	return NewCollection(res)
 }
 
-// SortBy 按 fn 提取的值升序排列，直接修改当前集合。
-// 使用稳定排序：本次比较相等的元素保持排序前的相对顺序，因此可以先排次要字段，再排主要字段。
+// SortBy sorts ascending by the value extracted by fn and mutates the current collection.
+// The sort is stable: elements that compare equal keep their previous relative order,
+// so a secondary field can be sorted before the primary field.
 func (c *Collection[T]) SortBy[R cmp.Ordered](fn func(T) R) *Collection[T] {
 	slices.SortStableFunc(
 		c.value, func(a, b T) int {
@@ -497,8 +506,9 @@ func (c *Collection[T]) SortBy[R cmp.Ordered](fn func(T) R) *Collection[T] {
 	return c
 }
 
-// SortByFunc 按自定义比较函数排序，直接修改当前集合。fn 返回 true 表示 v1 应排在 v2 前面。
-// 使用稳定排序，比较结果相等时保留原相对顺序。
+// SortByFunc sorts with a custom comparison function and mutates the current collection.
+// fn returns true when v1 should come before v2.
+// The sort is stable: equal elements keep their previous relative order.
 func (c *Collection[T]) SortByFunc(fn func(v1, v2 T) bool) (*Collection[T], error) {
 	if fn == nil {
 		return nil, errorx.NilFunc
@@ -513,8 +523,8 @@ func (c *Collection[T]) SortByFunc(fn func(v1, v2 T) bool) (*Collection[T], erro
 	return c, nil
 }
 
-// SortByDesc 按 fn 提取的值降序排列，直接修改当前集合。
-// 使用稳定排序：本次比较相等的元素保持排序前的相对顺序。
+// SortByDesc sorts descending by the value extracted by fn and mutates the current collection.
+// The sort is stable: elements that compare equal keep their previous relative order.
 func (c *Collection[T]) SortByDesc[R cmp.Ordered](fn func(T) R) *Collection[T] {
 	slices.SortStableFunc(
 		c.value, func(a, b T) int {
@@ -525,7 +535,7 @@ func (c *Collection[T]) SortByDesc[R cmp.Ordered](fn func(T) R) *Collection[T] {
 	return c
 }
 
-// KeyBy 用 fn 的返回值作为 key。相同 key 时，后者覆盖前者。
+// KeyBy uses fn's return value as the key. When keys collide, the later element overwrites the earlier one.
 func (c *Collection[T]) KeyBy[K comparable](fn func(T) K) map[K]T {
 	res := make(map[K]T, len(c.value))
 	for _, v := range c.value {
@@ -535,7 +545,8 @@ func (c *Collection[T]) KeyBy[K comparable](fn func(T) K) map[K]T {
 	return res
 }
 
-// Max 返回预声明有序类型中的最大元素。空集合返回 EmptyError，不把零值当作结果。
+// Max returns the maximum element among predeclared ordered types.
+// An empty collection returns EmptyError. The zero value is not treated as a result.
 func (c *Collection[T]) Max() (T, error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -545,7 +556,8 @@ func (c *Collection[T]) Max() (T, error) {
 	return c.maxWith(cmpFn)
 }
 
-// MaxBy 用 cmpFn 取最大元素。cmpFn 返回正数表示 a 大于 b。
+// MaxBy returns the maximum element according to cmpFn.
+// cmpFn returns a positive value when a is greater than b.
 func (c *Collection[T]) MaxBy(cmpFn func(a, b T) int) (T, error) {
 	if cmpFn == nil {
 		var zero T
@@ -568,7 +580,8 @@ func (c *Collection[T]) maxWith(cmpFn func(a, b T) int) (T, error) {
 	return maxElem, nil
 }
 
-// Min 返回预声明有序类型中的最小元素。空集合返回 EmptyError，不把零值当作结果。
+// Min returns the minimum element among predeclared ordered types.
+// An empty collection returns EmptyError. The zero value is not treated as a result.
 func (c *Collection[T]) Min() (T, error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -578,7 +591,8 @@ func (c *Collection[T]) Min() (T, error) {
 	return c.minWith(cmpFn)
 }
 
-// MinBy 用 cmpFn 取最小元素。cmpFn 返回负数表示 a 小于 b。
+// MinBy returns the minimum element according to cmpFn.
+// cmpFn returns a negative value when a is less than b.
 func (c *Collection[T]) MinBy(cmpFn func(a, b T) int) (T, error) {
 	if cmpFn == nil {
 		var zero T
@@ -601,7 +615,7 @@ func (c *Collection[T]) minWith(cmpFn func(a, b T) int) (T, error) {
 	return minElem, nil
 }
 
-// Contains 判断预声明有序类型是否包含某个元素。
+// Contains reports whether a predeclared ordered type contains the element.
 func (c *Collection[T]) Contains(obj T) (bool, error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -610,7 +624,8 @@ func (c *Collection[T]) Contains(obj T) (bool, error) {
 	return c.containsWith(obj, cmpFn), nil
 }
 
-// ContainsBy 用 cmpFn 判断是否包含。cmpFn 返回 0 表示相等。
+// ContainsBy reports whether the element is present according to cmpFn.
+// cmpFn returns 0 when the values are equal.
 func (c *Collection[T]) ContainsBy(obj T, cmpFn func(a, b T) int) (bool, error) {
 	if cmpFn == nil {
 		return false, errorx.NilFunc
@@ -627,7 +642,7 @@ func (c *Collection[T]) containsWith(obj T, cmpFn func(a, b T) int) bool {
 	return false
 }
 
-// ContainsCount 返回预声明有序类型中等于 obj 的元素个数。
+// ContainsCount returns how many elements of a predeclared ordered type equal obj.
 func (c *Collection[T]) ContainsCount(obj T) (int, error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -636,7 +651,7 @@ func (c *Collection[T]) ContainsCount(obj T) (int, error) {
 	return c.containsCountWith(obj, cmpFn), nil
 }
 
-// ContainsCountBy 用 cmpFn 统计相等元素的个数。cmpFn 返回 0 表示相等。
+// ContainsCountBy counts equal elements with cmpFn. cmpFn returns 0 when the values are equal.
 func (c *Collection[T]) ContainsCountBy(obj T, cmpFn func(a, b T) int) (int, error) {
 	if cmpFn == nil {
 		return 0, errorx.NilFunc
@@ -654,7 +669,8 @@ func (c *Collection[T]) containsCountWith(obj T, cmpFn func(a, b T) int) int {
 	return count
 }
 
-// Diff 返回存在于当前集合、但不存在于 arr 的元素。仅适用于预声明有序类型。
+// Diff returns elements that are in the current collection but not in arr.
+// It applies only to predeclared ordered types.
 func (c *Collection[T]) Diff(arr *Collection[T]) (*Collection[T], error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -663,7 +679,7 @@ func (c *Collection[T]) Diff(arr *Collection[T]) (*Collection[T], error) {
 	return c.diffWith(arr, cmpFn), nil
 }
 
-// DiffBy 用 cmpFn 计算差集。cmpFn 返回 0 表示相等。
+// DiffBy computes the difference with cmpFn. cmpFn returns 0 when the values are equal.
 func (c *Collection[T]) DiffBy(arr *Collection[T], cmpFn func(a, b T) int) (*Collection[T], error) {
 	if cmpFn == nil {
 		return nil, errorx.NilFunc
@@ -681,8 +697,9 @@ func (c *Collection[T]) diffWith(arr *Collection[T], cmpFn func(a, b T) int) *Co
 	return NewCollection(res)
 }
 
-// Sort 按元素自身升序排列，仅适用于预声明有序类型。直接修改当前集合。
-// 稳定排序，比较结果相等时保留原相对顺序。
+// Sort sorts elements ascending by themselves. It applies only to predeclared ordered types
+// and mutates the current collection.
+// The sort is stable: equal elements keep their previous relative order.
 func (c *Collection[T]) Sort() (*Collection[T], error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -693,8 +710,9 @@ func (c *Collection[T]) Sort() (*Collection[T], error) {
 	return c, nil
 }
 
-// SortDesc 按元素自身降序排列，仅适用于预声明有序类型。直接修改当前集合。
-// 稳定排序，比较结果相等时保留原相对顺序。
+// SortDesc sorts elements descending by themselves. It applies only to predeclared ordered types
+// and mutates the current collection.
+// The sort is stable: equal elements keep their previous relative order.
 func (c *Collection[T]) SortDesc() (*Collection[T], error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -709,15 +727,15 @@ func (c *Collection[T]) SortDesc() (*Collection[T], error) {
 	return c, nil
 }
 
-// Join 用 split 拼接元素。format 用于自定义每个元素的文本。
+// Join joins elements with split. format customizes the text of each element.
 func (c *Collection[T]) Join(split string, format ...func(item T) string) string {
 	if c.IsEmpty() {
 		return ""
 	}
 
-	// 使用 strings.Builder 优化字符串拼接性能
+	// strings.Builder avoids repeated string allocation.
 	var builder strings.Builder
-	// 预估容量以减少内存分配
+	// Estimate capacity to reduce allocations.
 	builder.Grow(len(c.value) * (len(split) + 10))
 
 	for i, v := range c.value {
@@ -734,7 +752,8 @@ func (c *Collection[T]) Join(split string, format ...func(item T) string) string
 	return builder.String()
 }
 
-// Union 返回两个预声明有序类型集合的并集，保留当前集合中的重复情况，再追加 arr 中没有的元素。
+// Union returns the union of two collections of a predeclared ordered type.
+// Duplicates already in the current collection are kept, then elements from arr that are absent are appended.
 func (c *Collection[T]) Union(arr *Collection[T]) (*Collection[T], error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -743,7 +762,7 @@ func (c *Collection[T]) Union(arr *Collection[T]) (*Collection[T], error) {
 	return c.unionWith(arr, cmpFn), nil
 }
 
-// UnionBy 用 cmpFn 计算并集。cmpFn 返回 0 表示相等。
+// UnionBy computes the union with cmpFn. cmpFn returns 0 when the values are equal.
 func (c *Collection[T]) UnionBy(arr *Collection[T], cmpFn func(a, b T) int) (*Collection[T], error) {
 	if cmpFn == nil {
 		return nil, errorx.NilFunc
@@ -772,7 +791,8 @@ func arrValue[T any](arr *Collection[T]) []T {
 	return arr.value
 }
 
-// Intersect 返回两个预声明有序类型集合的交集，保留当前集合中的出现顺序和重复。
+// Intersect returns the intersection of two collections of a predeclared ordered type,
+// keeping the current collection's order and duplicates.
 func (c *Collection[T]) Intersect(arr *Collection[T]) (*Collection[T], error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -781,7 +801,7 @@ func (c *Collection[T]) Intersect(arr *Collection[T]) (*Collection[T], error) {
 	return c.intersectWith(arr, cmpFn), nil
 }
 
-// IntersectBy 用 cmpFn 计算交集。cmpFn 返回 0 表示相等。
+// IntersectBy computes the intersection with cmpFn. cmpFn returns 0 when the values are equal.
 func (c *Collection[T]) IntersectBy(arr *Collection[T], cmpFn func(a, b T) int) (*Collection[T], error) {
 	if cmpFn == nil {
 		return nil, errorx.NilFunc
@@ -799,7 +819,7 @@ func (c *Collection[T]) intersectWith(arr *Collection[T], cmpFn func(a, b T) int
 	return NewCollection(res)
 }
 
-// Avg 对 fn 取出的数值求平均。空集合返回 0。
+// Avg returns the average of the numbers taken by fn. An empty collection returns 0.
 func (c *Collection[T]) Avg[N number](fn func(T) N) float64 {
 	if c.IsEmpty() {
 		return 0
@@ -816,7 +836,7 @@ func (c *Collection[T]) Avg[N number](fn func(T) N) float64 {
 		if allFinite {
 			count := float64(i + 1)
 			delta := value - mean
-			// 异号大数相减也可能溢出，先分摊再更新平均值。
+			// Subtracting large values of opposite sign can also overflow, so share the value first, then update the mean.
 			if math.IsInf(delta, 0) {
 				mean = mean - mean/count + value/count
 			} else {
@@ -824,16 +844,18 @@ func (c *Collection[T]) Avg[N number](fn func(T) N) float64 {
 			}
 		}
 	}
-	// 仅对有限输入的求和溢出使用递推均值，保留原有精度和 Inf/NaN 语义。
-	// 同时计算可避免重复调用有副作用的 fn。
+	// Use the running mean only when a sum of finite inputs overflows, keeping the original
+	// precision and Inf/NaN behavior.
+	// Computing both at once avoids calling a side-effecting fn twice.
 	if allFinite && math.IsInf(sum, 0) {
 		return mean
 	}
 	return sum / float64(len(c.value))
 }
 
-// Median 对 fn 取出的数值求中位数。偶数个时取中间两个的平均值。空集合返回 0。
-// 不修改原集合。
+// Median returns the median of the numbers taken by fn.
+// With an even count, it returns the average of the two middle values. An empty collection returns 0.
+// The original collection is not modified.
 func (c *Collection[T]) Median[N number](fn func(T) N) float64 {
 	if c.IsEmpty() {
 		return 0
@@ -849,7 +871,8 @@ func (c *Collection[T]) Median[N number](fn func(T) N) float64 {
 	if n%2 == 0 {
 		a, b := nums[n/2-1], nums[n/2]
 		sum := a + b
-		// 有限大数相加溢出时先减半；其余情况保留原计算，避免小数减半下溢。
+		// When adding finite large numbers overflows, halve first. Otherwise keep the original
+		// calculation so halving a small number does not underflow.
 		if math.IsInf(sum, 0) && !math.IsInf(a, 0) && !math.IsInf(b, 0) {
 			return a/2 + b/2
 		}
@@ -859,8 +882,9 @@ func (c *Collection[T]) Median[N number](fn func(T) N) float64 {
 	return nums[n/2]
 }
 
-// Mode 返回预声明有序类型中出现次数最多的元素。空集合返回 EmptyError。
-// 次数相同时，保留先出现的那个。
+// Mode returns the most frequent element among predeclared ordered types.
+// An empty collection returns EmptyError.
+// When frequencies tie, the element that appeared first is kept.
 func (c *Collection[T]) Mode() (T, error) {
 	cmpFn, err := basicOrderedCmp[T]()
 	if err != nil {
@@ -870,7 +894,8 @@ func (c *Collection[T]) Mode() (T, error) {
 	return c.modeWith(cmpFn)
 }
 
-// ModeBy 用 cmpFn 统计众数。cmpFn 返回 0 表示相等。空集合返回 EmptyError。
+// ModeBy finds the mode with cmpFn. cmpFn returns 0 when the values are equal.
+// An empty collection returns EmptyError.
 func (c *Collection[T]) ModeBy(cmpFn func(a, b T) int) (T, error) {
 	if cmpFn == nil {
 		var zero T
@@ -913,7 +938,7 @@ func (c *Collection[T]) modeWith(cmpFn func(a, b T) int) (T, error) {
 	return best.item, nil
 }
 
-// Sum 对 fn 取出的数值求和。空集合返回 0。
+// Sum returns the sum of the numbers taken by fn. An empty collection returns 0.
 func (c *Collection[T]) Sum[N number](fn func(T) N) float64 {
 	var sum float64
 	for _, item := range c.value {
@@ -923,17 +948,18 @@ func (c *Collection[T]) Sum[N number](fn func(T) N) float64 {
 	return sum
 }
 
-// Values 返回内部切片。这是引用，修改会影响当前集合，也会影响 NewCollection 时传入的切片。
+// Values returns the internal slice. This is a reference. Modifying it affects the current
+// collection and the slice passed to NewCollection.
 func (c *Collection[T]) Values() []T {
 	return c.value
 }
 
-// ToJson 获取json
+// ToJson returns the JSON encoding.
 func (c *Collection[T]) ToJson() ([]byte, error) {
 	return json.Marshal(c.value)
 }
 
-// FromJson 用 JSON 数组替换当前元素，直接修改当前集合。
+// FromJson replaces the current elements with a JSON array and mutates the current collection.
 func (c *Collection[T]) FromJson(data []byte) error {
 	return json.Unmarshal(data, &c.value)
 }

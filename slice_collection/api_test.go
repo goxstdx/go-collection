@@ -8,7 +8,7 @@ import (
 	"github.com/goxstdx/go-collection/errorx"
 )
 
-// TestBasicTypesCompareAtCall 验证预声明有序类型在调用时生成比较函数。
+// TestBasicTypesCompareAtCall checks that predeclared ordered types get a comparison function when the method is called.
 func TestBasicTypesCompareAtCall(t *testing.T) {
 	t.Run(
 		"int", func(t *testing.T) {
@@ -57,13 +57,13 @@ func assertBasicOrder[T cmp.Ordered](t *testing.T, in []T, wantMin, wantMax T) {
 	if sorted.Index(0) != wantMin || sorted.Index(sorted.Count()-1) != wantMax {
 		t.Fatalf("Sort() = %v", sorted.Values())
 	}
-	// Sort 只修改副本，原集合顺序不变。
+	// Sort changes only the copy. The original collection order stays the same.
 	if c.Index(0) != in[0] {
 		t.Fatalf("Sort changed the original collection: %v", c.Values())
 	}
 }
 
-// TestDefinedTypeRequiresCompareFunc 验证定义类型不能走无参比较。
+// TestDefinedTypeRequiresCompareFunc checks that a defined type cannot use comparison without a function.
 func TestDefinedTypeRequiresCompareFunc(t *testing.T) {
 	type score int
 	c := NewCollection([]score{3, 1, 2})
@@ -97,7 +97,7 @@ func sampleRecords() *Collection[record] {
 	)
 }
 
-// TestStructRequiresByMethod 验证结构体无参比较返回错误，By 方法按传入函数比较。
+// TestStructRequiresByMethod checks that comparing a struct without a function returns an error, and that the By method compares with the given function.
 func TestStructRequiresByMethod(t *testing.T) {
 	c := sampleRecords()
 
@@ -126,7 +126,7 @@ func TestStructRequiresByMethod(t *testing.T) {
 	}
 }
 
-// TestEmptyMinMaxMode 验证空集合不把零值当作成功结果。
+// TestEmptyMinMaxMode checks that an empty collection does not treat the zero value as a successful result.
 func TestEmptyMinMaxMode(t *testing.T) {
 	c := NewCollection([]int{})
 
@@ -145,7 +145,7 @@ func TestEmptyMinMaxMode(t *testing.T) {
 	}
 }
 
-// TestNilCompareFunc 验证比较函数为 nil 时返回 NilFunc。
+// TestNilCompareFunc checks that a nil comparison function returns NilFunc.
 func TestNilCompareFunc(t *testing.T) {
 	c := sampleRecords()
 
@@ -160,9 +160,9 @@ func TestNilCompareFunc(t *testing.T) {
 	}
 }
 
-// TestStableSortKeepsEarlierOrder 验证连续稳定排序时，后一次是主键。
-// 数据：id 1 a 10、id 2 b 8、id 3 c 8、id 4 d 10。
-// 先按 id 倒序，再按 age 正序，相同 age 应保留 id 倒序后的相对顺序。
+// TestStableSortKeepsEarlierOrder checks that, across successive stable sorts, the later sort is the primary key.
+// Data: id 1 a 10, id 2 b 8, id 3 c 8, id 4 d 10.
+// Sort by id descending, then by age ascending. Equal ages should keep the relative order left by the id sort.
 func TestStableSortKeepsEarlierOrder(t *testing.T) {
 	c := sampleRecords()
 	c.SortByDesc(func(r record) int { return r.ID })
@@ -177,7 +177,7 @@ func TestStableSortKeepsEarlierOrder(t *testing.T) {
 	}
 }
 
-// TestModeKeepsFirstOnTie 验证出现次数相同时保留先出现的元素。
+// TestModeKeepsFirstOnTie checks that a frequency tie keeps the element that appeared first.
 func TestModeKeepsFirstOnTie(t *testing.T) {
 	got, err := NewCollection([]int{1, 2, 2, 1}).Mode()
 	if err != nil || got != 1 {
@@ -185,7 +185,7 @@ func TestModeKeepsFirstOnTie(t *testing.T) {
 	}
 }
 
-// TestStructSetOps 验证结构体差集、并集、查找和去重使用传入的相等判断。
+// TestStructSetOps checks that struct difference, union, search, and deduplication use the given equality function.
 func TestStructSetOps(t *testing.T) {
 	left := sampleRecords()
 	right := NewCollection([]record{{ID: 2, Name: "b", Age: 8}, {ID: 9, Name: "z", Age: 1}})
@@ -212,7 +212,7 @@ func TestStructSetOps(t *testing.T) {
 	}
 }
 
-// TestMapAndAggregateUseCallerFunc 验证映射结果类型和数值聚合都由传入函数决定。
+// TestMapAndAggregateUseCallerFunc checks that the mapped result type and numeric aggregation are both decided by the given function.
 func TestMapAndAggregateUseCallerFunc(t *testing.T) {
 	c := sampleRecords()
 
@@ -249,7 +249,7 @@ func TestMapAndAggregateUseCallerFunc(t *testing.T) {
 	}
 }
 
-// TestDefinedNumericTypeCanAggregate 验证定义数值类型可以直接求和。
+// TestDefinedNumericTypeCanAggregate checks that a defined numeric type can be summed directly.
 func TestDefinedNumericTypeCanAggregate(t *testing.T) {
 	type money int64
 	got := NewCollection([]money{1, 2, 3}).Sum(func(m money) money { return m })
@@ -258,7 +258,7 @@ func TestDefinedNumericTypeCanAggregate(t *testing.T) {
 	}
 }
 
-// TestConcurrentReadDoesNotRace 验证只读比较不会写集合字段。
+// TestConcurrentReadDoesNotRace checks that a read-only comparison does not write collection fields.
 func TestConcurrentReadDoesNotRace(t *testing.T) {
 	c := NewCollection([]int{1, 2, 3})
 	done := make(chan struct{})
@@ -280,7 +280,7 @@ func TestConcurrentReadDoesNotRace(t *testing.T) {
 	}
 }
 
-// TestViewMethodsReturnCopies 验证分页和切分的结果不和原集合共用底层数组。
+// TestViewMethodsReturnCopies checks that paging and splitting do not share the backing array with the original collection.
 func TestViewMethodsReturnCopies(t *testing.T) {
 	c := NewCollection([]int{1, 2, 3, 4})
 
@@ -309,7 +309,7 @@ func TestViewMethodsReturnCopies(t *testing.T) {
 	}
 }
 
-// TestContainerAndReorderMutate 验证插入、前置、反转、打乱都改当前集合。
+// TestContainerAndReorderMutate checks that insert, prepend, reverse, and shuffle all mutate the current collection.
 func TestContainerAndReorderMutate(t *testing.T) {
 	c := NewCollection([]int{1, 2, 3})
 	if c.Insert(0, 0) != c || c.Values()[0] != 0 {

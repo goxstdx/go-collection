@@ -1,8 +1,10 @@
 // Package map_collection provides generic, chainable map collections with filtering,
 // mapping, reduction, and a concurrency-safe collection type.
 //
-// 提供对泛型 map 的链式集合操作。
+// It provides chainable collection operations over generic maps.
 //
-// 集合不保存 key 顺序。MinBy、MaxBy 每次调用都重新扫描全部元素。EachSorted 每次调用都重新排序。结果都不保存。
-// PluckField、Map、Reduce 的结果类型由传入函数决定，不按字段名反射取值。
+// The collection does not store key order. MinBy and MaxBy rescan every element on each call.
+// EachSorted re-sorts on each call. None of those results are stored.
+// The result types of PluckField, Map, and Reduce are decided by the functions passed in.
+// Values are not read by reflecting on field names.
 package map_collection

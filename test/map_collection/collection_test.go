@@ -30,7 +30,7 @@ func TestCopy(t *testing.T) {
 		t.Error("Copy did not copy the values correctly")
 	}
 
-	// 修改副本不应影响原集合
+	// Changing a copy must not affect the original collection.
 	copied.Set("d", 4)
 	if c.Count() == copied.Count() {
 		t.Error("Copy should create independent collection")
@@ -111,7 +111,7 @@ func TestGetValue(t *testing.T) {
 		t.Error("GetValue returned wrong value")
 	}
 
-	// 获取不存在的key应返回零值
+	// A missing key should return the zero value.
 	if c.GetValue("d") != 0 {
 		t.Error("GetValue should return zero value for non-existent key")
 	}
@@ -170,7 +170,7 @@ func TestSet(t *testing.T) {
 		t.Error("Set did not set correct value")
 	}
 
-	// 修改已存在的key
+	// Update a key that already exists.
 	c.Set("a", 10)
 	if c.GetValue("a") != 10 {
 		t.Error("Set did not update existing key")
@@ -183,12 +183,12 @@ func TestPut(t *testing.T) {
 
 	newC := c.Put("c", 3)
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c.Count() != 2 {
 		t.Error("Put should not modify original collection")
 	}
 
-	// 新集合应包含新值
+	// The new collection should contain the new value.
 	if newC.Count() != 3 || newC.GetValue("c") != 3 {
 		t.Error("Put did not create correct new collection")
 	}
@@ -200,12 +200,12 @@ func TestDelete(t *testing.T) {
 
 	newC := c.Delete("b")
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c.Count() != 3 {
 		t.Error("Delete should not modify original collection")
 	}
 
-	// 新集合应删除指定key
+	// The new collection should have the given key removed.
 	if newC.Count() != 2 || newC.Has("b") {
 		t.Error("Delete did not remove key correctly")
 	}
@@ -215,17 +215,17 @@ func TestDeleteByFunc(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3, "d": 4}
 	c := map_collection.NewCollection(m)
 
-	// 删除值为偶数的项
+	// Delete entries whose value is even.
 	newC := c.DeleteByFunc(func(k string, v int) bool {
 		return v%2 == 0
 	})
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c.Count() != 4 {
 		t.Error("DeleteByFunc should not modify original collection")
 	}
 
-	// 新集合应只保留奇数值
+	// The new collection should keep only odd values.
 	if newC.Count() != 2 || newC.Has("b") || newC.Has("d") {
 		t.Error("DeleteByFunc did not delete correctly")
 	}
@@ -249,12 +249,12 @@ func TestMerge(t *testing.T) {
 	m2 := map[string]int{"b": 20, "c": 3}
 	newC := c.Merge(m2)
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c.Count() != 2 {
 		t.Error("Merge should not modify original collection")
 	}
 
-	// 新集合应合并两个map，冲突时以other为准
+	// The new collection should merge both maps. On a conflict, other wins.
 	if newC.Count() != 3 || newC.GetValue("b") != 20 || newC.GetValue("c") != 3 {
 		t.Error("Merge did not merge correctly")
 	}
@@ -269,17 +269,17 @@ func TestMergeCollection(t *testing.T) {
 
 	newC := c1.MergeCollection(c2)
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c1.Count() != 2 {
 		t.Error("MergeCollection should not modify original collection")
 	}
 
-	// 新集合应合并两个Collection
+	// The new collection should merge both Collections.
 	if newC.Count() != 3 || newC.GetValue("b") != 20 || newC.GetValue("c") != 3 {
 		t.Error("MergeCollection did not merge correctly")
 	}
 
-	// 测试nil情况
+	// Test the nil case.
 	newC2 := c1.MergeCollection(nil)
 	if newC2.Count() != c1.Count() {
 		t.Error("MergeCollection with nil should return copy")
@@ -293,7 +293,7 @@ func TestMergeInPlace(t *testing.T) {
 	m2 := map[string]int{"b": 20, "c": 3}
 	c.MergeInPlace(m2)
 
-	// 应修改原集合
+	// The original collection should be modified.
 	if c.Count() != 3 || c.GetValue("b") != 20 || c.GetValue("c") != 3 {
 		t.Error("MergeInPlace did not merge correctly")
 	}
@@ -305,12 +305,12 @@ func TestOnly(t *testing.T) {
 
 	newC := c.Only([]string{"a", "c"})
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c.Count() != 4 {
 		t.Error("Only should not modify original collection")
 	}
 
-	// 新集合应只包含指定的key
+	// The new collection should contain only the given keys.
 	if newC.Count() != 2 || !newC.Has("a") || !newC.Has("c") || newC.Has("b") {
 		t.Error("Only did not filter correctly")
 	}
@@ -322,12 +322,12 @@ func TestExcept(t *testing.T) {
 
 	newC := c.Except([]string{"b", "d"})
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c.Count() != 4 {
 		t.Error("Except should not modify original collection")
 	}
 
-	// 新集合应排除指定的key
+	// The new collection should exclude the given keys.
 	if newC.Count() != 2 || newC.Has("b") || newC.Has("d") {
 		t.Error("Except did not filter correctly")
 	}
@@ -337,17 +337,17 @@ func TestFilter(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3, "d": 4}
 	c := map_collection.NewCollection(m)
 
-	// 过滤出偶数值
+	// Keep even values.
 	newC := c.Filter(func(v int, k string) bool {
 		return v%2 == 0
 	})
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c.Count() != 4 {
 		t.Error("Filter should not modify original collection")
 	}
 
-	// 新集合应只包含偶数值
+	// The new collection should contain only even values.
 	if newC.Count() != 2 || !newC.Has("b") || !newC.Has("d") {
 		t.Error("Filter did not filter correctly")
 	}
@@ -394,17 +394,17 @@ func TestMap(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	c := map_collection.NewCollection(m)
 
-	// 将所有值翻倍
+	// Double every value.
 	newC := c.Map(func(v int, k string) int {
 		return v * 2
 	})
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c.GetValue("a") != 1 {
 		t.Error("Map should not modify original collection")
 	}
 
-	// 新集合的值应翻倍
+	// Values in the new collection should be doubled.
 	if newC.GetValue("a") != 2 || newC.GetValue("b") != 4 || newC.GetValue("c") != 6 {
 		t.Error("Map did not transform values correctly")
 	}
@@ -414,7 +414,7 @@ func TestReduce(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
 	c := map_collection.NewCollection(m)
 
-	// 求和
+	// Sum.
 	sum := c.Reduce(0, func(acc any, v int, k string) any {
 		return acc.(int) + v
 	})
@@ -563,7 +563,7 @@ func TestToJSON(t *testing.T) {
 		t.Errorf("ToJSON returned error: %v", err)
 	}
 
-	// 反序列化验证
+	// Check unmarshalling.
 	var result map[string]int
 	err = json.Unmarshal([]byte(jsonStr), &result)
 	if err != nil {
@@ -579,7 +579,7 @@ func TestDD(t *testing.T) {
 	m := map[string]int{"a": 1, "b": 2}
 	c := map_collection.NewCollection(m)
 
-	// DD应该返回自身
+	// DD should return itself.
 	result := c.DD()
 	if result != c {
 		t.Error("DD should return itself")
@@ -604,7 +604,7 @@ func TestPluckFieldString(t *testing.T) {
 		t.Errorf("PluckField returned wrong number of items: %d", len(names))
 	}
 
-	// 验证是否包含所有名字
+	// Check that every name is present.
 	nameMap := make(map[string]bool)
 	for _, name := range names {
 		nameMap[name] = true
@@ -629,7 +629,7 @@ func TestPluckFieldInt(t *testing.T) {
 		t.Errorf("PluckField returned wrong number of items: %d", len(ages))
 	}
 
-	// 验证是否包含所有年龄
+	// Check that every age is present.
 	ageMap := make(map[int]bool)
 	for _, age := range ages {
 		ageMap[age] = true
@@ -640,46 +640,46 @@ func TestPluckFieldInt(t *testing.T) {
 	}
 }
 
-// ========== 极限场景测试 ==========
+// ========== Edge-case tests ==========
 
-// 测试空集合的基本操作
+// Test basic operations on an empty collection.
 func TestEmptyCollectionOperations(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{})
 
-	// 测试 Count
+	// Test Count.
 	if c.Count() != 0 {
 		t.Errorf("Empty collection Count should be 0, got %d", c.Count())
 	}
 
-	// 测试 IsEmpty
+	// Test IsEmpty.
 	if !c.IsEmpty() {
 		t.Error("Empty collection should return true for IsEmpty")
 	}
 
-	// 测试 Keys
+	// Test Keys.
 	keys := c.Keys()
 	if len(keys) != 0 {
 		t.Errorf("Empty collection Keys should return empty slice, got %d keys", len(keys))
 	}
 
-	// 测试 Values
+	// Test Values.
 	values := c.Values()
 	if len(values) != 0 {
 		t.Errorf("Empty collection Values should return empty slice, got %d values", len(values))
 	}
 
-	// 测试 All
+	// Test All.
 	all := c.All()
 	if len(all) != 0 {
 		t.Errorf("Empty collection All should return empty map, got %d items", len(all))
 	}
 }
 
-// 测试空集合的迭代操作
+// Test iteration of an empty collection.
 func TestEmptyCollectionIteration(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{})
 
-	// 测试 Each - 不应该执行任何迭代
+	// Test Each: it should not iterate at all.
 	count := 0
 	c.Each(func(v int, k string) bool {
 		count++
@@ -689,7 +689,7 @@ func TestEmptyCollectionIteration(t *testing.T) {
 		t.Errorf("Each on empty collection should not iterate, but iterated %d times", count)
 	}
 
-	// 测试 EachSorted
+	// Test EachSorted.
 	count = 0
 	err := c.EachSorted(func(a string, _ int, b string, _ int) int {
 		return 0
@@ -700,7 +700,7 @@ func TestEmptyCollectionIteration(t *testing.T) {
 		t.Errorf("EachSorted on empty collection should not iterate, but iterated %d times, err %v", count, err)
 	}
 
-	// 测试 Map - 应返回空集合
+	// Test Map: it should return an empty collection.
 	mapped := c.Map(func(v int, k string) int {
 		return v * 2
 	})
@@ -708,7 +708,7 @@ func TestEmptyCollectionIteration(t *testing.T) {
 		t.Error("Map on empty collection should return empty collection")
 	}
 
-	// 测试 Reduce - 应返回初始值
+	// Test Reduce: it should return the initial value.
 	result := c.Reduce(100, func(acc any, v int, k string) any {
 		return acc.(int) + v
 	})
@@ -717,11 +717,11 @@ func TestEmptyCollectionIteration(t *testing.T) {
 	}
 }
 
-// 测试空集合的过滤和筛选
+// Test filtering an empty collection.
 func TestEmptyCollectionFiltering(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{})
 
-	// 测试 Filter
+	// Test Filter.
 	filtered := c.Filter(func(v int, k string) bool {
 		return v > 0
 	})
@@ -729,24 +729,24 @@ func TestEmptyCollectionFiltering(t *testing.T) {
 		t.Error("Filter on empty collection should return empty collection")
 	}
 
-	// 测试 Only
+	// Test Only.
 	only := c.Only([]string{"a", "b"})
 	if !only.IsEmpty() {
 		t.Error("Only on empty collection should return empty collection")
 	}
 
-	// 测试 Except
+	// Test Except.
 	except := c.Except([]string{"a", "b"})
 	if !except.IsEmpty() {
 		t.Error("Except on empty collection should return empty collection")
 	}
 }
 
-// 测试空集合的查找操作
+// Test lookup on an empty collection.
 func TestEmptyCollectionSearch(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{})
 
-	// 空集合上 Filter 后再取最小，应返回 EmptyError
+	// Filtering an empty collection and then taking the minimum should return EmptyError.
 	_, _, err := c.Filter(func(v int, k string) bool {
 		return v > 0
 	}).MinBy(func(_ string, va int, _ string, vb int) int {
@@ -766,7 +766,7 @@ func TestEmptyCollectionSearch(t *testing.T) {
 	}
 }
 
-// 测试空集合的序列化
+// Test serialization of an empty collection.
 func TestEmptyCollectionToJSON(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{})
 
@@ -775,7 +775,7 @@ func TestEmptyCollectionToJSON(t *testing.T) {
 		t.Errorf("ToJSON on empty collection returned error: %v", err)
 	}
 
-	// 应该是空对象 {}
+	// It should be an empty object {}.
 	var result map[string]int
 	err = json.Unmarshal([]byte(jsonStr), &result)
 	if err != nil {
@@ -787,38 +787,38 @@ func TestEmptyCollectionToJSON(t *testing.T) {
 	}
 }
 
-// 测试空集合的复制和合并
+// Test copy and merge of an empty collection.
 func TestEmptyCollectionCopyAndMerge(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{})
 
-	// 测试 Copy
+	// Test Copy.
 	copied := c.Copy()
 	if !copied.IsEmpty() {
 		t.Error("Copy of empty collection should be empty")
 	}
 
-	// 测试 Merge 空map
+	// Test Merge with an empty map.
 	merged := c.Merge(map[string]int{})
 	if !merged.IsEmpty() {
 		t.Error("Merge empty with empty should return empty")
 	}
 
-	// 测试 Merge 非空map
+	// Test Merge with a non-empty map.
 	merged2 := c.Merge(map[string]int{"a": 1})
 	if merged2.Count() != 1 {
 		t.Error("Merge empty with non-empty should return non-empty")
 	}
 
-	// 测试 MergeCollection nil
+	// Test MergeCollection with nil.
 	merged3 := c.MergeCollection(nil)
 	if !merged3.IsEmpty() {
 		t.Error("MergeCollection with nil should return empty")
 	}
 }
 
-// 测试删除所有元素 - 核心场景
+// Test deleting every element, the core case.
 func TestDeleteAllElements(t *testing.T) {
-	// 测试 Delete 删除所有元素
+	// Test Delete removing every element.
 	c := map_collection.NewCollection(map[string]int{"a": 1, "b": 2})
 	c = c.Delete("a")
 	c = c.Delete("b")
@@ -830,7 +830,7 @@ func TestDeleteAllElements(t *testing.T) {
 		t.Errorf("After deleting all elements, Count should be 0, got %d", c.Count())
 	}
 
-	// 测试 Remove 删除所有元素
+	// Test Remove removing every element.
 	c2 := map_collection.NewCollection(map[string]int{"a": 1, "b": 2})
 	c2.Remove("a")
 	c2.Remove("b")
@@ -840,11 +840,11 @@ func TestDeleteAllElements(t *testing.T) {
 	}
 }
 
-// 测试 DeleteByFunc 删除所有元素
+// Test DeleteByFunc removing every element.
 func TestDeleteByFuncAllElements(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"a": 2, "b": 4, "c": 6})
 
-	// 删除所有偶数(实际上删除所有元素)
+	// Delete every even value (which deletes every element).
 	result := c.DeleteByFunc(func(k string, v int) bool {
 		return v%2 == 0
 	})
@@ -856,17 +856,17 @@ func TestDeleteByFuncAllElements(t *testing.T) {
 		t.Errorf("DeleteByFunc removing all elements should have Count 0, got %d", result.Count())
 	}
 
-	// 原集合不应改变
+	// The original collection must not change.
 	if c.Count() != 3 {
 		t.Error("DeleteByFunc should not modify original collection")
 	}
 }
 
-// 测试 Filter 结果为空
+// Test Filter whose result is empty.
 func TestFilterResultEmpty(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"a": 1, "b": 3, "c": 5})
 
-	// 过滤偶数,但没有偶数
+	// Keep evens, but there are no evens.
 	result := c.Filter(func(v int, k string) bool {
 		return v%2 == 0
 	})
@@ -879,11 +879,11 @@ func TestFilterResultEmpty(t *testing.T) {
 	}
 }
 
-// 测试 Only 结果为空
+// Test Only whose result is empty.
 func TestOnlyResultEmpty(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"a": 1, "b": 2, "c": 3})
 
-	// 保留不存在的keys
+	// Keep keys that do not exist.
 	result := c.Only([]string{"x", "y", "z"})
 
 	if !result.IsEmpty() {
@@ -893,18 +893,18 @@ func TestOnlyResultEmpty(t *testing.T) {
 		t.Errorf("Only with non-existent keys should have Count 0, got %d", result.Count())
 	}
 
-	// 测试 Only 传入空切片
+	// Test Only with an empty slice.
 	result2 := c.Only([]string{})
 	if !result2.IsEmpty() {
 		t.Error("Only with empty keys slice should return empty collection")
 	}
 }
 
-// 测试 Except 结果为空
+// Test Except whose result is empty.
 func TestExceptResultEmpty(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"a": 1, "b": 2, "c": 3})
 
-	// 排除所有keys
+	// Exclude every key.
 	result := c.Except([]string{"a", "b", "c"})
 
 	if !result.IsEmpty() {
@@ -914,18 +914,18 @@ func TestExceptResultEmpty(t *testing.T) {
 		t.Errorf("Except excluding all keys should have Count 0, got %d", result.Count())
 	}
 
-	// 测试 Except 传入空切片
+	// Test Except with an empty slice.
 	result2 := c.Except([]string{})
 	if result2.Count() != 3 {
 		t.Error("Except with empty keys slice should return all elements")
 	}
 }
 
-// 测试单元素集合的操作
+// Test operations on a one-element collection.
 func TestSingleElementCollection(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"a": 1})
 
-	// 测试基本操作
+	// Test basic operations.
 	if c.Count() != 1 {
 		t.Error("Single element collection should have Count 1")
 	}
@@ -933,7 +933,7 @@ func TestSingleElementCollection(t *testing.T) {
 		t.Error("Single element collection should not be empty")
 	}
 
-	// 测试 Filter 保留
+	// Test Filter keeping the element.
 	filtered := c.Filter(func(v int, k string) bool {
 		return v == 1
 	})
@@ -941,7 +941,7 @@ func TestSingleElementCollection(t *testing.T) {
 		t.Error("Filter keeping single element should return collection with 1 element")
 	}
 
-	// 测试 Filter 删除
+	// Test Filter dropping the element.
 	filtered2 := c.Filter(func(v int, k string) bool {
 		return v == 2
 	})
@@ -949,7 +949,7 @@ func TestSingleElementCollection(t *testing.T) {
 		t.Error("Filter removing single element should return empty collection")
 	}
 
-	// 测试 Map
+	// Test Map.
 	mapped := c.Map(func(v int, k string) int {
 		return v * 2
 	})
@@ -960,7 +960,7 @@ func TestSingleElementCollection(t *testing.T) {
 		t.Error("Map should transform the single element")
 	}
 
-	// 测试 Reduce
+	// Test Reduce.
 	result := c.Reduce(10, func(acc any, v int, k string) any {
 		return acc.(int) + v
 	})
@@ -968,14 +968,14 @@ func TestSingleElementCollection(t *testing.T) {
 		t.Errorf("Reduce on single element should return 11, got %d", result)
 	}
 
-	// 测试删除单个元素后变空
+	// Test that deleting the only element leaves the collection empty.
 	deleted := c.Delete("a")
 	if !deleted.IsEmpty() {
 		t.Error("Delete single element should return empty collection")
 	}
 }
 
-// 测试单元素集合删除后为空
+// Test that a one-element collection is empty after delete.
 func TestSingleElementDeleteToEmpty(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"a": 1})
 
@@ -989,7 +989,7 @@ func TestSingleElementDeleteToEmpty(t *testing.T) {
 	}
 }
 
-// 测试 Pluck 在空集合上
+// Test Pluck on an empty collection.
 func TestPluckFieldStringOnEmpty(t *testing.T) {
 	c := map_collection.NewCollection(map[string]Person{})
 
@@ -999,7 +999,7 @@ func TestPluckFieldStringOnEmpty(t *testing.T) {
 	}
 }
 
-// 测试 PluckField 在空集合上取出整数。
+// Test PluckField taking integers from an empty collection.
 func TestPluckFieldIntOnEmpty(t *testing.T) {
 	c := map_collection.NewCollection(map[string]Person{})
 

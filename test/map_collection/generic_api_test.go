@@ -6,7 +6,7 @@ import (
 	"github.com/goxstdx/go-collection/map_collection"
 )
 
-// TestMapResultType 验证 Map 的结果类型由函数返回值决定，且不改原集合。
+// TestMapResultType checks that Map's result type is decided by the function return value and that the original collection is unchanged.
 func TestMapResultType(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"a": 1, "b": 2})
 
@@ -19,7 +19,7 @@ func TestMapResultType(t *testing.T) {
 	}
 }
 
-// TestReduceKeepsAccumulatorType 验证 Reduce 直接使用调用方的累加类型。
+// TestReduceKeepsAccumulatorType checks that Reduce uses the caller's accumulator type directly.
 func TestReduceKeepsAccumulatorType(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"a": 1, "b": 2, "c": 3})
 
@@ -29,7 +29,7 @@ func TestReduceKeepsAccumulatorType(t *testing.T) {
 	}
 }
 
-// TestPluckFieldReturnsValues 验证 PluckField 取出全部 value，顺序不确定。
+// TestPluckFieldReturnsValues checks that PluckField takes every value. Order is not specified.
 func TestPluckFieldReturnsValues(t *testing.T) {
 	c := map_collection.NewCollection(map[string]int{"b": 2, "a": 1, "c": 3})
 

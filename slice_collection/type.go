@@ -1,24 +1,24 @@
 package slice_collection
 
-// number 是底层类型为整数或浮点数的类型。
-// 带 ~，type Money int64 这类定义类型也可以交给 Sum、Avg、Median。
+// number is a type whose underlying type is an integer or a floating-point number.
+// The ~ allows defined types such as type Money int64 to be used with Sum, Avg, and Median.
 type number interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 |
 		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
 		~float32 | ~float64
 }
 
-// Collection 是集合操作的核心结构，实现了对各种数据类型的集合操作。
+// Collection is the core type for collection operations over many kinds of data.
 //
-// Collection 使用泛型参数 T 来支持不同类型的数据，包括基本类型和结构体类型。
-// 它提供了丰富的方法来操作和转换这些数据，如过滤、映射、排序、查找、聚合等。
+// The type parameter T supports basic types and struct types.
+// Methods cover filtering, mapping, sorting, searching, aggregation, and similar transforms.
 //
-// 使用示例：
+// Example:
 //
 //	intColl := NewCollection([]int{1, 2, 3, 4, 5})
 //	filtered := intColl.Filter(func(item int, key int) bool {
 //	    return item > 2
 //	})
 type Collection[T any] struct {
-	value []T // 数组
+	value []T // slice
 }
